@@ -9,6 +9,7 @@ env/
 __pycache__/
 *.py[cod]
 *$py.class
+requirements.in
 
 .pytest_cache/
 .coverage
