@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 from enum import Enum
-from sqlalchemy import DateTime, func, Enum as SQLEnum, String
+from sqlalchemy import Date, DateTime, func, Enum as SQLEnum, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 class Base(DeclarativeBase):
@@ -14,6 +14,10 @@ class TransactionStatus(str, Enum):
     PENDING = "pending"
     CONFIRMED = "confirmed"
     CANCELLED = "cancelled"
+
+class GoalStatus(str, Enum):
+    OPEN = "open"
+    CLOSED = "closed"
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -68,17 +72,22 @@ class Goal(Base):
 
     target_amount: Mapped[int]
 
-    target_date: Mapped[datetime | None] = mapped_column(
-        DateTime(timezone=True),
-        nullable=True
+    start_date: Mapped[date] = mapped_column(
+        Date,
+        server_default=func.current_date()
     )
 
-    start_date: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True),
-        default=func.now()
+    target_date: Mapped[date | None] = mapped_column(
+        Date,
+        nullable=True
     )
 
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         server_default=func.now()
+    )
+
+    goal_status: Mapped[GoalStatus] = mapped_column(
+        SQLEnum(GoalStatus),
+        server_default=GoalStatus.OPEN
     )

@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import date, datetime
 
-from app.models import TransactionType, TransactionStatus
+from app.models import GoalStatus, TransactionType, TransactionStatus
 from pydantic import BaseModel
 
 class TransactionCreate(BaseModel):
@@ -27,18 +27,25 @@ class GoalCreate(BaseModel):
     name: str
     description: str | None = None
     target_amount: int
-    target_date: datetime | None = None
-    start_date: datetime
+    target_date: date | None = None
+    start_date: date
+    goal_status: GoalStatus
 
 class GoalResponse(BaseModel):
     id: int
     name: str
     description: str | None
     target_amount: int
-    target_date: datetime | None
-    start_date: datetime
+    target_date: date | None
+    start_date: date
     created_at: datetime
+    goal_status: GoalStatus
 
     model_config = {
         "from_attributes": True
     }
+
+class TransactionSummaryResponse(BaseModel):
+    income: int
+    expense: int
+    balance: int
