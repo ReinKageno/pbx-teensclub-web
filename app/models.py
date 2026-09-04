@@ -16,8 +16,9 @@ class TransactionStatus(str, Enum):
     CANCELLED = "cancelled"
 
 class GoalStatus(str, Enum):
-    OPEN = "open"
-    CLOSED = "closed"
+    ACTIVE = "active"
+    UPCOMING = "upcoming"
+    FINISHED = "finished"
 
 class Transaction(Base):
     __tablename__ = "transactions"
@@ -36,7 +37,7 @@ class Transaction(Base):
         nullable=True
     )
 
-    donor_name: Mapped[str | None] = mapped_column(
+    issuer: Mapped[str | None] = mapped_column(
         String(50),
         nullable=True
     )
@@ -77,7 +78,7 @@ class Goal(Base):
         server_default=func.current_date()
     )
 
-    target_date: Mapped[date | None] = mapped_column(
+    end_date: Mapped[date | None] = mapped_column(
         Date,
         nullable=True
     )
@@ -87,7 +88,7 @@ class Goal(Base):
         server_default=func.now()
     )
 
-    goal_status: Mapped[GoalStatus] = mapped_column(
+    status: Mapped[GoalStatus] = mapped_column(
         SQLEnum(GoalStatus),
-        server_default=GoalStatus.OPEN
+        server_default=GoalStatus.UPCOMING
     )

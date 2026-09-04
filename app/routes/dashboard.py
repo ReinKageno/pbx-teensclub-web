@@ -1,32 +1,31 @@
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Goal, Transaction, TransactionStatus, TransactionType
+from app.models import Goal, GoalStatus, Transaction, TransactionStatus, TransactionType
 
 router = APIRouter(
     prefix="/dashboard"
 )
 
-@router.get("/")
-def get_dashboard(
-    db: Session = Depends(get_db)
-):
-    transactions = db.query(Transaction).all()
-    goals = db.query(Goal).all()
-    # current_goal = db.query(Goal).filter(func.date(Goal.start_date) >= func.current_date()).first()
+@router.get("")
+def get_dashboard(db: Session = Depends(get_db)):
+    income, expense, balance = calculate_balance(db)
 
-    income, expense = calculate_balance(transactions)
-    balance = income - expense
-
-    goal_progress = []
-
-    for goal in goals:
-        goal_progress.append(goal_calculator(transactions, goal))
+    goal_progress = goal_calculator(db)
 
     recent_transactions = (
         db.query(Transaction)
+        .filter(Transaction.type == TransactionType.INCOME)
+        .order_by(Transaction.created_at.desc())
+        .limit(10)
+        .all()
+    )
+
+    recent_expenses = (
+        db.query(Transaction)
+        .filter(Transaction.type == TransactionType.EXPENSE)
         .order_by(Transaction.created_at.desc())
         .limit(10)
         .all()
@@ -36,48 +35,70 @@ def get_dashboard(
         "income": income,
         "expense": expense,
         "balance": balance,
-        "goals": goal_progress,
+        "goal": goal_progress,
         "recent_transactions": recent_transactions,
+        "recent_expenses": recent_expenses,
     }
 
-def calculate_balance(transactions):
-    income = 0
-    expense = 0
+def calculate_balance(transactions: Session):
+    income = transactions.scalar(
+        select(func.coalesce(func.sum(Transaction.amount), 0))
+        .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.type == TransactionType.INCOME)
+    )
 
-    for transaction in transactions:
-        if transaction.type == TransactionType.INCOME:
-            income += transaction.amount
-        elif transaction.type == TransactionType.EXPENSE:
-            expense += transaction.amount
+    expense = transactions.scalar(
+        select(func.coalesce(func.sum(Transaction.amount), 0))
+        .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.type == TransactionType.EXPENSE)
+    )
 
-    return income, expense
+    balance = income - expense
 
-def goal_calculator(transactions, goal):
-    current_amount = 0
+    return income, expense, balance
 
-    for transaction in transactions:
-        if transaction.type != TransactionType.INCOME:
-            continue
+def goal_calculator(db: Session, extract_history: bool = False) -> list:
+    goals: list[Goal] = []
 
-        if transaction.status != TransactionStatus.CONFIRMED:
-            continue
+    if extract_history:
+        history = db.scalars(select(Goal)
+            .where(Goal.status == GoalStatus.FINISHED)
+            .limit(10)
+        ).all()
 
-        created_date = transaction.created_at.date()
+        goals.extend(history)
 
-        if created_date < goal.start_date:
-            continue
+    active_goal = db.scalars(
+        select(Goal)
+        .where(Goal.status == GoalStatus.ACTIVE)
+    ).first()
 
-        if goal.target_date and created_date > goal.target_date:
-            continue
+    if active_goal is not None:
+        goals.append(active_goal)
 
-        current_amount += transaction.amount
+    print(goals)
 
-    progress = (
-        current_amount / goal.target_amount
-    ) * 100
+    def calc_goal(database: Goal):
+        return db.scalar(
+            select(func.coalesce(func.sum(Transaction.amount), 0))
+            .where(
+                Transaction.status == TransactionStatus.CONFIRMED,
+                func.date(Transaction.created_at) >= database.start_date,
+                func.date(Transaction.created_at) <= database.end_date
+            )
+        )
+    
+    result = []
 
-    return {
-        "current_amount": current_amount,
-        "target_amount": goal.target_amount,
-        "progress": progress,
-    }
+    for goal in goals:
+        current_amount = calc_goal(goal)
+        progress = (current_amount / goal.target_amount) * 100
+
+        result.append({
+            "goal": goal.name,
+            "goal_id": goal.id,
+            "current_amount": current_amount,
+            "target_amount": goal.target_amount,
+            "progress": progress,
+            "status": goal.status,
+        })
+
+    return result

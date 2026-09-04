@@ -1,13 +1,13 @@
 from datetime import date, datetime
 
-from app.models import GoalStatus, TransactionType, TransactionStatus
+from app.models import GoalStatus, Transaction, TransactionType, TransactionStatus
 from pydantic import BaseModel
 
 class TransactionCreate(BaseModel):
     type: TransactionType
     amount: int
     description: str | None = None
-    donor_name: str | None = None
+    issuer: str | None = None
     payment_method: str | None = None
 
 class TransactionResponse(BaseModel):
@@ -15,7 +15,7 @@ class TransactionResponse(BaseModel):
     type: TransactionType
     amount: int
     description: str | None
-    donor_name: str | None
+    issuer: str | None
     status: TransactionStatus
     created_at: datetime
 
@@ -27,25 +27,37 @@ class GoalCreate(BaseModel):
     name: str
     description: str | None = None
     target_amount: int
-    target_date: date | None = None
     start_date: date
-    goal_status: GoalStatus
+    end_date: date | None = None
+    status: GoalStatus
 
 class GoalResponse(BaseModel):
     id: int
     name: str
     description: str | None
     target_amount: int
-    target_date: date | None
     start_date: date
+    end_date: date | None
     created_at: datetime
-    goal_status: GoalStatus
+    status: GoalStatus
 
     model_config = {
         "from_attributes": True
     }
 
-class TransactionSummaryResponse(BaseModel):
+class EconomyResponse(BaseModel):
     income: int
     expense: int
     balance: int
+
+class ExpenseResponse(BaseModel):
+    id: int
+    issuer: str
+    amount: int
+    description: str | None
+    created_at: datetime
+
+class TransactionSummaryResponse(BaseModel):
+    recent_transactions: list[TransactionResponse]
+    recent_expenses: list[ExpenseResponse]
+    deposit: EconomyResponse
