@@ -1,28 +1,19 @@
+
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import Transaction, TransactionStatus, TransactionType
-from app.schemas import TransactionCreate, TransactionResponse, TransactionSummaryResponse
+from app.database.session import get_db
+from app.dependencies.commons import common_limit_parameters
+from app.models.transaction import Transaction, TransactionType
+from app.schemas.transaction import TransactionCreate, TransactionResponse, TransactionSummaryResponse
+from app.services.transaction_service import calculate_recent_balance
 
 router = APIRouter(
     prefix="/transactions"
 )
 
-
-async def transaction_parameters(id: int | None = None, limit: int | None = 100):
-    if 1 <= limit <= 100:
-        _limit = limit
-    else:
-        raise HTTPException(
-            status_code=422,
-            detail=f"'limit' parameter out of range: {limit}"
-        )
-
-    return {"transaction_id": id, "limit": _limit}
 
 @router.post("", response_model=TransactionResponse)
 def create_transaction(
@@ -46,11 +37,11 @@ def create_transaction(
 
 @router.get("", response_model=list[TransactionResponse]|TransactionResponse)
 def get_transactions(
-    commons: Annotated[dict, Depends(transaction_parameters)],
+    commons: Annotated[dict, Depends(common_limit_parameters)],
     db: Session = Depends(get_db),
 ):
-    if commons["transaction_id"]:
-        transactions = db.query(Transaction).filter(Transaction.id == commons["transaction_id"]).first()
+    if commons["target_id"] is not None:
+        transactions = db.query(Transaction).filter(Transaction.id == commons["target_id"]).first()
     else:
         transactions = db.query(Transaction).limit(limit=commons["limit"]).all()
 
@@ -64,7 +55,7 @@ def get_transactions(
 
 @router.get("/summary", response_model=TransactionSummaryResponse)
 def get_summary(transactions: Session = Depends(get_db)):
-    income, expense, net_balance = calculate_balance(transactions)
+    income, expense, net_balance = calculate_recent_balance(transactions)
 
     recent_transactions:list[Transaction] = (
         transactions.query(Transaction)
@@ -83,51 +74,9 @@ def get_summary(transactions: Session = Depends(get_db)):
     )
 
     return {
+        "income": income,
+        "expense": expense,
+        "balance": net_balance,
         "recent_transactions": recent_transactions,
         "recent_expenses": recent_expenses,
-        "deposit": {
-            "income": income,
-            "expense": expense,
-            "balance": net_balance,
-        },
     }
-
-def calculate_balance(db: Session, confirmed_only: bool = False, limit: int = 365):
-    if not (1 <= limit <= 365):
-        limit = 1 if limit < 1 else 365
-
-    if confirmed_only:
-        income = db.scalar(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.type == TransactionType.INCOME)
-            .limit(limit=limit)
-        )
-    
-        expense = db.scalar(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.type == TransactionType.EXPENSE)
-            .limit(limit=limit)
-        )
-
-    else:
-        income = db.scalar(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.type == TransactionType.INCOME)
-            .limit(limit=limit)
-        )
-
-        expense = db.scalar(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.type == TransactionType.EXPENSE)
-            .limit(limit=limit)
-        )
-
-    if not income:
-        income = 0
-
-    if not expense:
-        expense = 0
-
-    balance = income - expense
-
-    return income, expense, balance

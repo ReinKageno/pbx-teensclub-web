@@ -1,12 +1,10 @@
 from logging.config import fileConfig
-from os import environ as env
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-from app.database import DATABASE_URL
+from app.database.session import DATABASE_URL
 from app.models import Base
 
 # this is the Alembic Config object, which provides
@@ -24,6 +22,7 @@ config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
 # for 'autogenerate' support
 # from myapp import mymodel
 # target_metadata = mymodel.Base.metadata
+print(Base.metadata.tables.keys())
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

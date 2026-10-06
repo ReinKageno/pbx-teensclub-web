@@ -3,26 +3,15 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database import get_db
-from app.models import Goal
-from app.schemas import GoalCreate, GoalResponse
+from app.database.session import get_db
+from app.dependencies.commons import common_limit_parameters
+from app.models.goal import Goal
+from app.schemas.goal import GoalCreate, GoalResponse
 
 router = APIRouter(
     prefix="/goals"
 )
 
-
-async def goal_parameters(id: int | None = None, limit: int | None = 100):
-    if 1 <= limit <= 100:
-        _limit = limit
-    else:
-        raise HTTPException(
-            status_code=422,
-            detail=f"'limit' parameter out of range: {limit}"
-        )
-
-
-    return {"goal_id": id, "limit": _limit}
 
 @router.post("", response_model=GoalResponse)
 def create_goal(
@@ -45,15 +34,15 @@ def create_goal(
 
 @router.get("", response_model=list[GoalResponse]|GoalResponse)
 def get_goals(
-        commons: Annotated[dict, Depends(goal_parameters)],
+        commons: Annotated[dict, Depends(common_limit_parameters)],
         db: Session = Depends(get_db)
     ):
-    if not commons["goal_id"]:
-        goal = db.query(Goal).limit(limit=commons['limit']).all()
+    if commons["target_id"] is not None:
+        goal = db.query(Goal).filter(Goal.id == commons["target_id"]).first()
     else:
-        goal = db.query(Goal).filter(Goal.id == commons['goal_id']).first()
+        goal = db.query(Goal).limit(limit=commons["limit"]).all()
 
-    if goal is None:
+    if not goal:
         raise HTTPException(
             status_code=404,
             detail="Goal not found"

@@ -1,6 +1,6 @@
 ## Installation
 
-## Python and PostgreSQL
+### Python and PostgreSQL
 
 Create python virtual environment and activate </br>
 Install all requirements from `requirements.txt`
@@ -27,7 +27,7 @@ createdb -U postgres pbxteensclub_db
 ### Environment Variable
 
 This is the `.env` template that you can use. </br>
-Replace the parts enclosed in angle brackets `<>` with your own data.
+Replace the parts enclosed in angle brackets `<>` (the brackets too) with your own data.
 
 ```env
 DATABASE_URL="postgresql+psycopg://postgres:<password>@<ip>:<port>/pbxteensclub_db"

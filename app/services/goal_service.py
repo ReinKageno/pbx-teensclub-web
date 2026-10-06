@@ -1,0 +1,125 @@
+
+from datetime import date, datetime
+import time
+
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session
+
+from app.database.session import SessionLocal
+from app.models.goal import Goal, GoalStatus
+from app.models.transaction import Transaction, TransactionStatus
+
+def update_goal_status():
+    db: Session = SessionLocal()
+    try:
+        now = date.today
+
+        update_upcoming = (
+            db.query(Goal)
+            .filter(
+                Goal.status == GoalStatus.UPCOMING,
+                Goal.start_date <= now,
+                Goal.end_date > now,
+            )
+            .update(
+                {Goal.status:GoalStatus.ACTIVE},
+                synchronize_session=False
+            )
+        )
+
+        update_skipped = (
+            db.query(Goal)
+            .filter(
+                GoalStatus == GoalStatus.UPCOMING,
+                Goal.end_date < now,
+            )
+            .update(
+                {Goal.status:GoalStatus.FINISHED},
+                synchronize_session=False
+            )
+        )
+
+        update_active = (
+            db.query(Goal)
+            .filter(
+                Goal.status == GoalStatus.ACTIVE,
+                Goal.end_date < now,
+            )
+            .update(
+                {Goal.status:GoalStatus.FINISHED},
+                synchronize_session=False
+            )
+        )
+
+        db.commit()
+
+        return update_upcoming + update_skipped + update_active
+    except Exception:
+        db.rollback()
+        raise
+
+    finally:
+        db.close()
+
+def schedule_update_goal(interval_minutes):
+    seconds = interval_minutes * 60
+    print(f"Starting updater every {interval_minutes} minutes...")
+
+    while True:
+        try:
+            count = update_goal_status()
+            if count:
+                print(f"{datetime.now().replace(microsecond=0)} Update {len(count)} goals.")
+            else:
+                print(f"{datetime.now().replace(microsecond=0)} No goals updated.")
+        except Exception as e:
+            print(f"Error during update: {e}")
+
+        time.sleep(seconds)
+
+def goal_calculator(db: Session, extract_history: bool = False) -> list:
+    goals: list[Goal] = []
+
+    if extract_history:
+        history = db.scalars(select(Goal)
+            .where(Goal.status == GoalStatus.FINISHED)
+            .limit(10)
+        ).all()
+
+        goals.extend(history)
+
+    active_goal = db.scalars(
+        select(Goal)
+        .where(Goal.status == GoalStatus.ACTIVE)
+    ).first()
+
+    if active_goal is not None:
+        goals.append(active_goal)
+
+    def calc_goal(database: Goal):
+        return db.scalar(
+            select(func.coalesce(func.sum(Transaction.amount), 0))
+            .where(
+                Transaction.status == TransactionStatus.CONFIRMED,
+                func.date(Transaction.created_at) >= database.start_date,
+                func.date(Transaction.created_at) <= database.end_date
+            )
+        )
+    
+    result = []
+
+    for goal in goals:
+        current_amount = calc_goal(goal)
+        progress = (current_amount / goal.target_amount) * 100
+        progress_ = progress if progress <= 100 else 0 if progress <= 0 else 100
+
+        result.append({
+            "goal": goal.name,
+            "goal_id": goal.id,
+            "current_amount": current_amount,
+            "target_amount": goal.target_amount,
+            "progress": progress_,
+            "status": goal.status,
+        })
+
+    return result
