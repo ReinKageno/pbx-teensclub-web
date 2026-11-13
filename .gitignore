@@ -20,6 +20,11 @@ htmlcov/
 
 .vscode/
 .idea/
+.continue/
+.project/
+
+ROADMAP.md
+ISSUES.md
 
 .DS_Store
 Thumbs.db

@@ -2,9 +2,13 @@ import threading
 
 from fastapi import FastAPI
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
+from fastapi.staticfiles import StaticFiles
 
-from app.routes import cookie, goals, transactions, user
-from app.services import goal_service
+from app import templates
+from app.function.donation_services import schedule_update_goal
+from app.function.frontend import rupiah
+from app.services.handlers import register_exception_handlers
+from app.routers import admin, goal, transactions, users
 
 app = FastAPI(
     title="KTeensApp",
@@ -16,10 +20,21 @@ app = FastAPI(
 # Redirect the main path
 # app.frontend("/", directory="dist", fallback="index.html")
 
+register_exception_handlers(app)
+
+app.include_router(admin.router)
+app.include_router(goal.router)
 app.include_router(transactions.router)
-app.include_router(goals.router)
-app.include_router(user.router)
-app.include_router(cookie.router)
+app.include_router(users.router)
+app.include_router(users.router_notification)
+
+templates.env.filters["rupiah"] = rupiah
+
+app.mount(
+    "/static",
+    StaticFiles(directory="app/static"),
+    name="static",
+)
 
 @app.get("/")
 async def root():
@@ -29,6 +44,6 @@ jobstores = {
     'default': SQLAlchemyJobStore
 }
 
-goal_updater = threading.Thread(target=goal_service.schedule_update_goal, args=(60,))
+goal_updater = threading.Thread(target=schedule_update_goal, args=(60,))
 
 goal_updater.start()

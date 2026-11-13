@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from .transaction import TransactionResponse
 
 
-class DashboardGoalResponse(BaseModel):
+class AdminFundDashboardGoalResponse(BaseModel):
     goal: str
     goal_id: int
     current_amount: int
@@ -11,10 +11,10 @@ class DashboardGoalResponse(BaseModel):
     progress: float
     status: str
 
-class DashboardResponse(BaseModel):
+class AdminFundDashboardResponse(BaseModel):
     income: int
     expense: int
     balance: int
-    goal: list[DashboardGoalResponse]
+    goal: list[AdminFundDashboardGoalResponse]
     recent_transactions: list[TransactionResponse]
     recent_expenses: list[TransactionResponse]

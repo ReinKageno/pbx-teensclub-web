@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Transaction Logs</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<main>
+  <h1>Transaction Logs</h1>
+  <p class="subtitle">
+    Teens Club financial activity.
+  </p>
+
+  <div class="table-wrapper">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-table-id">ID</th>
+          <th class="col-table-issuer">Issuer</th>
+          <th class="col-table-amount">Amount</th>
+          <th class="col-table-description">Detail</th>
+          <th class="col-table-type">Tags</th>
+          <th class="col-table-date">Date</th>
+        </tr>
+      </thead>
+
+      <tbody>
+        {% for transaction in transactions %}
+        {% set transaction_type =
+          transaction.type.value
+          if transaction.type.value is defined
+          else transaction.type
+        %}
+        {% set transaction_status =
+          transaction.status.value
+          if transaction.status.value is defined
+          else transaction.status
+        %}
+
+        <tr>
+          <td class="muted-cell">
+            TCR-{{ "%04d" | format(transaction.id) }}
+          </td>
+
+          <td>
+            {{ transaction.issuer or "—" }}
+          </td>
+
+          <td class="amount {{ transaction_type | lower }}">
+            {{ transaction.amount | rupiah }}
+          </td>
+
+          <td class="description-cell"
+              title="{{ transaction.description or '' }}">
+            {{ transaction.description or "No detail provided." }}
+          </td>
+
+          <td>
+            <div class="transaction-badges">
+              <span class="type-badge {{ transaction_type | lower }}">
+                {{ transaction_type | title }}
+              </span>
+
+              <span class="status-badge {{ transaction_status | lower }}">
+                {{ transaction_status | title }}
+              </span>
+            </div>
+          </td>
+
+          <td class="date-cell">
+            {{ transaction.created_at.strftime("%d %b %Y")
+               if transaction.created_at else "—" }}
+          </td>
+        </tr>
+
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty-state">
+            No transactions found.
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</main>
+</body>
+</html>

@@ -1,0 +1,235 @@
+/* Transaction logs — Cyber Blue */
+
+:root {
+    color-scheme: dark;
+    --bg: #201a0b;
+    --surface-head: #3d3114;
+    --surface: #302811;
+    --border: #504424;
+    --text: #e2e8f0;
+    --muted: #94a3b8;
+    --accent: #60a5fa;
+    --income: #4ade80;
+    --expense: #fdba74;
+
+    --border-radius: 8px;
+}
+
+body {
+    margin: 0;
+    padding: 32px 20px;
+    background: var(--bg);
+    color: var(--text);
+    font-family: Inter, system-ui, Helvetica sans-serif;
+}
+
+main {
+    width: min(1100px, 100%);
+    margin: 0 auto;
+}
+
+h1 {
+    margin-bottom: 8px;
+    letter-spacing: -0.04em;
+}
+
+.subtitle {
+    margin-top: 0;
+    color: var(--muted);
+}
+
+/* Scroll horizontally on narrow screens */
+.table-wrapper {
+    overflow-x: auto;
+    margin-top: 28px;
+    border: 1px solid var(--border);
+    border-radius: var(--border-radius);
+    background: var(--surface);
+}
+
+table {
+    width: 100%;
+    table-layout: fixed;
+    border-collapse: collapse;
+    text-align: left;
+    white-space: nowrap;
+}
+
+thead {
+    background: var(--surface-head);
+}
+
+th,
+td {
+    padding: 15px 18px;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    color: var(--muted);
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+td {
+    font-size: .85rem;
+}
+
+tbody tr {
+    transition: background 160ms ease;
+}
+
+tbody tr:hover {
+    background: var(--surface-head);
+}
+
+tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.amount {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.col-table-id {
+    width: 8%;
+}
+
+.col-table-issuer {
+    width: 20%;
+}
+
+.col-table-amount {
+    width: 10%;
+}
+
+.col-table-description {
+    width: 42%;
+}
+
+.col-table-type {
+    width: 9%;
+}
+
+.col-table-date {
+    width: 11%;
+}
+
+.col-view-issuer {
+    width: 20%;
+}
+
+.col-view-amount {
+    width: 10%;
+}
+
+.col-view-desctiption {
+    width: 70%;
+}
+
+.type-badge, .status-badge {
+    width: 4rem;
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: capitalize;
+    text-align: center;
+}
+
+.type-badge.income {
+    background: #12352f;
+    color: #4ade80;
+}
+
+.type-badge.expense {
+    background: #3a2820;
+    color: #fdba74;
+}
+
+.empty-state {
+    padding: 36px;
+    color: var(--muted);
+    text-align: center;
+}
+
+.transaction-description {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* Transaction type and status badges */
+.transaction-badges {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.status-badge.confirmed {
+  color: #8bd5a8;
+  background: rgba(76, 175, 120, 0.12);
+  border-color: rgba(76, 175, 120, 0.25);
+}
+
+.status-badge.pending {
+  color: #e9c878;
+  background: rgba(220, 170, 55, 0.12);
+  border-color: rgba(220, 170, 55, 0.25);
+}
+
+.status-badge.cancelled {
+  color: #ee9292;
+  background: rgba(220, 80, 80, 0.12);
+  border-color: rgba(220, 80, 80, 0.25);
+}
+
+.muted-cell {
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.date-cell {
+  white-space: nowrap;
+}
+
+.description-cell {
+  overflow-wrap: anywhere;
+  min-width: 180px;
+}
+
+/* Keep the table usable on smaller screens */
+.table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.table-wrapper table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+/* Optional: preserve your existing column sizing */
+.table-wrapper th,
+.table-wrapper td {
+  padding: 12px 14px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+
+@media (max-width: 600px) {
+    body {
+        padding: 24px 12px;
+    }
+
+    th, td {
+        padding: 12px;
+    }
+}

@@ -1,0 +1,42 @@
+<form method="post" action="/transactions/new">
+  <label for="amount">Amount</label>
+  <input
+      type="number"
+      id="amount"
+      name="amount"
+      min="1"
+      required
+  >
+
+  <label for="donor_name">Name</label>
+  <input
+      type="text"
+      id="donor_name"
+      name="donor_name"
+      maxlength="40"
+  >
+
+  <label for="description">Description</label>
+  <textarea
+      id="description"
+      name="description"
+      maxlength="500"
+  ></textarea>
+
+  {% if is_admin %}
+      <label for="type">Transaction type</label>
+      <select id="type" name="type" required>
+          <option value="income">Income</option>
+          <option value="expense">Expense</option>
+      </select>
+
+      <label for="status">Status</label>
+      <select id="status" name="status" required>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="cancelled">Cancelled</option>
+      </select>
+  {% endif %}
+
+  <button type="submit">Submit transaction</button>
+</form>

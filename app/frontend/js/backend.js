@@ -1,1 +1,0 @@
-document.cookie = "username=Oracle; Max-age=0;";

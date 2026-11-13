@@ -1,10 +1,15 @@
 from logging.config import fileConfig
+from os import environ
 
+from dotenv import load_dotenv
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-from app.database.session import DATABASE_URL
+load_dotenv()
+
+DATABASE_URL = environ['DATABASE_URL']
+
 from app.models import Base
 
 # this is the Alembic Config object, which provides
@@ -16,7 +21,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-config.set_main_option("sqlalchemy.url", DATABASE_URL.replace("%", "%%"))
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 # add your model's MetaData object here
 # for 'autogenerate' support

@@ -1,8 +1,4 @@
 from pwdlib import PasswordHash
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
-from app.models.user import User
 
 password_hash = PasswordHash.recommended()
 

@@ -1,12 +1,8 @@
 from os import environ
 
 from dotenv import load_dotenv
-from fastapi import Cookie, Depends, HTTPException
 from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
-
-from app.models.user import Session as UserSession, User
-
+from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
 
@@ -27,35 +23,3 @@ def get_db():
         yield db
     finally:
         db.close()
-
-def get_current_user(
-    session_id: str | None = Cookie(default=None),
-    db: Session = Depends(get_db),
-):
-    if session_id is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Not authenticated"
-        )
-    
-    session = db.querry(UserSession).filter(
-        UserSession.id == session_id
-    ).first()
-
-    if session is None:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid session"
-        )
-
-    user = db.query(User).filter(
-        User.id == session.user_id
-    )
-
-    if user is None:
-        raise HTTPException(
-            status_code=401,
-            detail="User not found"
-        )
-
-    return user

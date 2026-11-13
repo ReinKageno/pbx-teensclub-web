@@ -1,40 +1,46 @@
 from datetime import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
-from app.models.transaction import TransactionStatus, TransactionType
+from app.models.enums import TransactionStatus, TransactionType
 
 
-class TransactionCreate(BaseModel):
-    issuer: str | None = None
-    amount: int
-    type: TransactionType
-    description: str | None = None
-    payment_method: str | None = None
-
-class TransactionResponse(BaseModel):
-    id: int
-    issuer: str | None
-    amount: int
-    type: TransactionType
-    description: str | None
-    status: TransactionStatus
-    created_at: datetime
-
-    model_config = {
-        "from_attributes": True 
-    }
-
-class ExpenseResponse(BaseModel):
+class TransactionBase(BaseModel):
     id: int
     issuer: str
     amount: int
     description: str | None
     created_at: datetime
 
-class TransactionSummaryResponse(BaseModel):
+class UserTransactionCreate(BaseModel):
+    issuer: str | None = None
+    amount: int
+    description: str | None = Field(default=None, max_length=500)
+    payment_method: str | None = None
+
+    model_config = ConfigDict(extra="forbid")
+
+class AdminTransactionCreate(UserTransactionCreate):
+    type: TransactionType
+    status: TransactionStatus
+
+class TransactionResponse(TransactionBase):
+    issuer: str | None
+    type: TransactionType
+    status: TransactionStatus
+
+    model_config = {
+        "from_attributes": True 
+    }
+
+class TransactionExpense(TransactionBase):
+    pass
+
+class TransactionRecent(BaseModel):
+    recent_transactions: list[TransactionResponse]
+    recent_expenses: list[TransactionExpense]
+
+class TransactionRecentWithSum(TransactionRecent):
     income: int
     expense: int
     balance: int
-    recent_transactions: list[TransactionResponse]
-    recent_expenses: list[ExpenseResponse]

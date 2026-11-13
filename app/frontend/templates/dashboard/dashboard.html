@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Community Fund</title>
+  <link rel="stylesheet" href="/static/dashboard.css">
+</head>
+
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="/dashboard">
+        <span class="brand-mark">✳</span>
+        <span>Community Fund</span>
+      </a>
+
+      <nav class="side-nav" aria-label="Main navigation">
+        <a class="nav-link active" href="/dashboard"><span class="nav-icon">▦</span> Dashboard</a>
+        <a class="nav-link" href="/transactions"><span class="nav-icon">⇄</span> Transactions</a>
+        <a class="nav-link" href="/goals"><span class="nav-icon">◎</span> Goals</a>
+        <a class="nav-link" href="/admin/users"><span class="nav-icon">♙</span> Users</a>
+        <a class="nav-link" href="/reports"><span class="nav-icon">▥</span> Reports</a>
+        <a class="nav-link" href="/settings"><span class="nav-icon">⚙</span> Settings</a>
+      </nav>
+
+      <div class="sidebar-note">
+        <span class="note-mark">✳</span>
+        <p>Together, we build<br>a stronger community.</p>
+      </div>
+    </aside>
+
+    <div class="main-column">
+      <header class="topbar">
+        <form class="search" action="/dashboard" method="get" role="search">
+          <span aria-hidden="true">⌕</span>
+          <input type="search" name="q" placeholder="Search transactions..." aria-label="Search">
+        </form>
+        <div class="topbar-user">
+          <span class="notification" aria-label="Notifications">♧<i></i></span>
+          <span class="avatar" aria-hidden="true">A</span>
+          <span class="user-label">
+            <strong>{{ current_user.display_name | default("Admin", true) }}</strong>
+            <small>{{ current_user.role | default("Administrator", true) }}</small>
+          </span>
+        </div>
+      </header>
+
+      <main class="content">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">OVERVIEW</p>
+            <h1>Dashboard</h1>
+            <p class="subtitle">Teens Club internal admin dashboard.</p>
+          </div>
+          <div class="date-chip">▦ <span>{{ date_range | default("This month", true) }}</span></div>
+        </div>
+
+        <section class="stats-grid" aria-label="Financial summary">
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-icon income-icon">↑</span>
+              <span class="stat-label">Total Income</span>
+            </div>
+            <p class="stat-value">{{ summary.total_income | default(0, true) | rupiah }}</p>
+            <p class="stat-foot positive">↗ <span>{{ summary.income_change | default("—", true) }}</span> <small>vs.
+                previous period</small></p>
+          </article>
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-icon expense-icon">↓</span>
+              <span class="stat-label">Total Expenses</span>
+            </div>
+            <p class="stat-value">{{ summary.total_expenses | default(0, true) | rupiah }}</p>
+            <p class="stat-foot positive">↘ <span>{{ summary.expense_change | default("—", true) }}</span> <small>vs.
+                previous period</small></p>
+          </article>
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-icon balance-icon">◈</span>
+              <span class="stat-label">Current Balance</span>
+              <div class="stat-icon info-icon info-card tooltip">
+                i
+                <span class="tooltip-text">Calculated based on <code
+                    class="tooltip-animation-blink">confirmed</code></span>
+              </div>
+            </div>
+            <p class="stat-value">{{ summary.balance | default(0, true) | rupiah }}</p>
+            <p class="stat-foot neutral"><span>Income − expenses</span></p>
+          </article>
+          <article class="stat-card">
+            <div class="stat-top">
+              <span class="stat-icon donors-icon">♙</span>
+              <span class="stat-label">Confirmed Donations</span>
+            </div>
+            <p class="stat-value">{{ summary.confirmed_donations | default("—", true) }}</p>
+            <p class="stat-foot neutral"><span>Confirmed transactions</span></p>
+          </article>
+        </section>
+
+        <section class="charts-grid">
+          <article class="panel income-panel">
+            <div class="panel-heading">
+              <div><span class="panel-symbol">▥</span>
+                <h2>Income vs. Expenses</h2>
+              </div>
+              <div class="legend"><span><i class="legend-dot income-dot"></i> Income</span><span><i
+                    class="legend-dot expense-dot"></i> Expenses</span></div>
+            </div>
+            {% if chart_data %}
+            <div class="bar-chart" role="img" aria-label="Income and expenses by period">
+              {% for item in chart_data %}
+              <div class="bar-group">
+                <div class="bars">
+                  <span class="bar income-bar" style="height: {{ item.income_percent | default(0) }}%"><span
+                      class="sr-only">Income</span></span>
+                  <span class="bar expense-bar" style="height: {{ item.expense_percent | default(0) }}%"><span
+                      class="sr-only">Expenses</span></span>
+                </div>
+                <span class="bar-label">{{ item.label }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="chart-empty">
+              <span class="empty-chart-icon">▥</span>
+              <p>This feature still in progress.</p>
+            </div>
+            {% endif %}
+          </article>
+
+          <article class="panel categories-panel">
+            <div class="panel-heading">
+              <div><span class="panel-symbol">◉</span>
+                <h2>Expense Breakdown</h2>
+              </div>
+            </div>
+            {% if expense_categories %}
+            <div class="category-list">
+              {% for category in expense_categories %}
+              <div class="category-row">
+                <span class="category-name"><i class="category-dot category-color-{{ loop.index0 % 5 }}"></i>{{
+                  category.name }}</span>
+                <span class="category-value">{{ category.percent }}%</span>
+                <div class="category-track"><span class="category-fill category-color-{{ loop.index0 % 5 }}"
+                    style="width: {{ category.percent }}%"></span></div>
+              </div>
+              {% endfor %}
+            </div>
+            {% else %}
+            <div class="chart-empty compact">
+              <span class="empty-chart-icon">◉</span>
+              <p>This feature is still in progress.</p>
+            </div>
+            {% endif %}
+          </article>
+        </section>
+
+        <section class="lower-grid">
+          <article class="panel transactions-panel">
+            <div class="panel-heading">
+              <div><span class="panel-symbol">⇄</span>
+                <h2>Recent Transactions</h2>
+              </div>
+              <a class="text-link" href="/admin/donation/activity">View all <span aria-hidden="true">→</span></a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Tags</th>
+                    <th>Amount</th>
+                    <th>Description</th>
+                    <th>Date</th>
+                    <th><span class="sr-only">Details</span></th>
+                  </tr>
+                </thead>
+
+
+                <tbody>
+                  {% if transactions_error %}
+                  <tr>
+                    <td colspan="6" class="empty-state error-state">
+                      <strong>Unable to load transactions</strong>
+                      <p>
+                        Something went wrong while retrieving transaction data.
+                        Please try again later.
+                      </p>
+                    </td>
+                  </tr>
+
+                  {% elif transactions %}
+                  {% for transaction in transactions %}
+                  <tr>
+                    <td class="muted-cell">
+                      #TRX-{{ "%04d" | format(transaction.id) }}
+                    </td>
+
+                    <td>
+                      {% set transaction_type =
+                      transaction.type.value
+                      if transaction.type.value is defined
+                      else transaction.type
+                      %}
+
+                      {% set transaction_status =
+                      transaction.status.value
+                      if transaction.status.value is defined
+                      else transaction.status
+                      %}
+
+                      <div class="transaction-badges">
+                        <span class="tags-badge {{ transaction_type | lower }}"
+                          aria-label="Type: {{ transaction_type | title }}">
+                          {{ transaction_type | title }}
+                        </span>
+
+                        <span class="tags-badge status-badge {{ transaction_status | lower }}"
+                          aria-label="Status: {{ transaction_status | title }}">
+                          {{ transaction_status | title }}
+                        </span>
+                      </div>
+                    </td>
+
+                    <td class="amount">
+                      {{ transaction.amount | rupiah }}
+                    </td>
+
+                    <td class="description-cell" title="{{ transaction.description or '' }}">
+                      {{ transaction.description or "—" }}
+                    </td>
+
+                    <td class="date-cell">
+                      {{ transaction.created_at.strftime("%d %b %Y")
+                      if transaction.created_at else "—" }}
+                    </td>
+
+                    <td>
+                      <a class="more-link" href="/transactions/info/{{ transaction.id }}"
+                        aria-label="View transaction">></a>
+                    </td>
+                  </tr>
+                  {% endfor %}
+
+                  {% else %}
+                  <tr>
+                    <td colspan="6" class="empty-state">
+                      No transactions found yet.
+                    </td>
+                  </tr>
+                  {% endif %}
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <aside class="right-rail">
+            <article class="panel activity-panel">
+              <div class="panel-heading">
+                <div><span class="panel-symbol">♧</span>
+                  <h2>Recent Activity</h2>
+                </div>
+              </div>
+              {% if activities %}
+              <ol class="activity-list">
+                {% for activity in activities %}
+                <li class="activity-item">
+                  <span class="activity-marker {{ activity.kind | default('default', true) }}">{{ activity.icon |
+                    default("•", true) }}</span>
+                  <div><strong>{{ activity.title }}</strong>
+                    <p>{{ activity.description }}</p><small>{{ activity.time }}</small>
+                  </div>
+                </li>
+                {% endfor %}
+              </ol>
+              {% else %}
+              <p class="muted-copy">Recent administrative activity will appear here.</p>
+              {% endif %}
+            </article>
+            <article class="callout-card">
+              <span class="callout-icon">✳</span>
+              <div><strong>Every contribution matters</strong>
+                <p>Keep your community informed and your records up to date.</p>
+              </div>
+              <a href="/transactions/new" class="button-link">＋ Add transaction</a>
+            </article>
+          </aside>
+        </section>
+      </main>
+
+      <footer class="footer">
+        <span>© {{ current_year | default(2026, true) }} Community Fund. Internal administration.</span>
+        <div><a href="/privacy">Privacy</a><a href="/help">Help</a></div>
+      </footer>
+    </div>
+  </div>
+</body>
+
+</html>
