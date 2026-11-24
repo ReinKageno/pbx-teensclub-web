@@ -1,6 +1,6 @@
 
 from datetime import date, datetime
-import time
+import asyncio
 
 from fastapi import Depends
 from sqlalchemy import func, select, case
@@ -17,13 +17,13 @@ def sum_total_donation(
     stmt = select(
         func.coalesce(
             func.sum(case(
-                (Transaction.type == TransactionType.INCOME, Transaction.amount),
+                (Transaction.flow == TransactionType.INCOME, Transaction.amount),
                 else_=0,
             )),
         0,).label("income"),
         func.coalesce(
             func.sum(case(
-                (Transaction.type == TransactionType.EXPENSE, Transaction.amount),
+                (Transaction.flow == TransactionType.EXPENSE, Transaction.amount),
                 else_=0,
             )),0,).label("expense"),
     ).where(Transaction.status == TransactionStatus.CONFIRMED,)
@@ -45,26 +45,26 @@ def sum_recent_donation(
     if confirmed_only:
         income = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.type == TransactionType.INCOME)
+            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.flow == TransactionType.INCOME)
             .limit(limit=limit)
         )
     
         expense = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.type == TransactionType.EXPENSE)
+            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.flow == TransactionType.EXPENSE)
             .limit(limit=limit)
         )
 
     else:
         income = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.type == TransactionType.INCOME)
+            .where(Transaction.flow == TransactionType.INCOME)
             .limit(limit=limit)
         )
 
         expense = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.type == TransactionType.EXPENSE)
+            .where(Transaction.flow == TransactionType.EXPENSE)
             .limit(limit=limit)
         )
 
@@ -131,21 +131,25 @@ def update_goal_status() -> list:
     finally:
         db.close()
 
-def schedule_update_goal(interval_minutes):
-    seconds = interval_minutes * 60
+async def schedule_update_goal(interval_minutes: int, stop_event: asyncio.Event):
+    """Refresh goal statuses periodically until the application shuts down."""
+    interval_seconds = interval_minutes * 60
     print(f"Starting updater every {interval_minutes} minutes...")
 
-    while True:
+    while not stop_event.is_set():
         try:
-            count = update_goal_status()
+            count = await asyncio.to_thread(update_goal_status)
             if count:
-                print(f"{datetime.now().replace(microsecond=0)} Update {len(count)} goals.")
+                print(f"{datetime.now().replace(microsecond=0)} Updated {count} goals.")
             else:
                 print(f"{datetime.now().replace(microsecond=0)} No goals updated.")
         except Exception as e:
             print(f"Error during update: {e}")
 
-        time.sleep(seconds)
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=interval_seconds)
+        except asyncio.TimeoutError:
+            pass
 
 def goal_calculator(db: Session, extract_history: bool = False) -> list:
     goals: list[Goal] = []

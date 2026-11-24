@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#fdefdf">
+  <title>Make a Donation | Teens Club</title>
+  <link rel="stylesheet" href="/static/css/default.css">
+  <link rel="stylesheet" href="/static/css/donation.css">
+</head>
+<body>
+  <main class="donation-page">
+    <div class="donation-layout">
+      <section class="donation-intro" aria-labelledby="page-title">
+       <div class="sub-menu-header">
+         <a class="back-button" href="/" aria-label="Kembali ke halaman utama"><span aria-hidden="true">←</span> Kembali</a>
+       </div>
+        <span class="brand-mark" aria-hidden="true"><img src="/static/assets/img/logo-pbx.png" alt="" class="mark-logo"></span>
+        <p class="eyebrow">Teens Club · Community</p>
+        <h1 id="page-title">Here we go again.</h1>
+        <p class="intro-copy">Upah harian untuk si Nau.</p>
+        <div class="impact-note">
+          <p>Every contribution matters. Thank you for being part of the good we’re building together.</p>
+        </div>
+      </section>
+
+      <section class="donation-card" aria-labelledby="form-title">
+        <div class="card-heading">
+          <h2 id="form-title">Buat Donasi</h2>
+          <p>Katakan jumlah dan pilih caramu untuk berdonasi.</p>
+        </div>
+        <form method="post" action="/donation/new">
+          <div class="form-field">
+            <label class="field-label" for="donor-name">Nama</label>
+            {% if is_admin %}
+            <div class="admin-name-default" id="admin-name-default">
+              <input class="form-control name-readonly color-muted" id="donor-name" type="text" value="{{ user.username }}" readonly aria-describedby="name-help">
+              <input type="hidden" id="admin-default-issuer" name="issuer" value="{{ user.username }}">
+              <small class="field-help" id="name-help">Nama transaksi menggunakan username admin.</small>
+            </div>
+            <label class="alternate-name-toggle" for="use-alternate-name">
+              <input id="use-alternate-name" type="checkbox" aria-controls="alternate-name-field">
+              <span>Atas namakan dengan nama lain</span>
+            </label>
+            <div class="alternate-name-field" id="alternate-name-field" hidden>
+              <input class="form-control" id="alternate-name" name="issuer" type="text" maxlength="40" autocomplete="name" placeholder="Masukkan nama lain" disabled>
+              <small class="field-help">Nama ini akan dicatat sebagai issuer transaksi.</small>
+            </div>
+            {% elif is_logged_in %}
+            <input class="form-control name-readonly color-muted" id="donor-name" type="text" value="{{ user.display_name }}" autocomplete="display_name" disabled aria-describedby="name-help">
+            <input type="hidden" name="issuer" value="{{ user.display_name }}">
+            <small class="field-help" id="name-help">Nama mengikuti nama tampilan akunmu.</small>
+            {% else %}
+            <input class="form-control" id="donor-name" name="issuer" type="text" maxlength="50" autocomplete="name" placeholder="Nama tampilan (opsional)" aria-describedby="name-help">
+            <small class="field-help" id="name-help">Kosongkan nama untuk berdonasi secara anonim.</small>
+            {% endif %}
+          </div>
+
+          {% if is_admin %}
+          <fieldset class="admin-settings form-field">
+            <legend class="group-label">Advanced settings</legend>
+            <div class="admin-settings-grid">
+              <label class="field-label" for="transaction-type">Transaction type
+                <select class="form-control" id="transaction-type" name="type">
+                  {% for item in transaction_types %}
+                  <option value="{{ item.value }}" {% if item.value == 'income' %}selected{% endif %}>{{ item.value | title }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+              <label class="field-label" for="transaction-status">Transaction status
+                <select class="form-control" id="transaction-status" name="status">
+                  {% for item in transaction_statuses %}
+                  <option value="{{ item.value }}" {% if item.value == 'pending' %}selected{% endif %}>{{ item.value | title }}</option>
+                  {% endfor %}
+                </select>
+              </label>
+            </div>
+            <small class="field-help">These settings are available only to administrators.</small>
+          </fieldset>
+          {% endif %}
+
+          <fieldset class="form-field" style="padding: 0; border: 0; margin-inline: 0;">
+            <legend class="group-label">Jumlah donasi</legend>
+            <div class="amount-wrap">
+              <span class="currency-prefix" aria-hidden="true">Rp</span>
+              <input class="form-control amount-input" id="amount" name="amount" type="number" min="1000" step="1000" inputmode="numeric" placeholder="0" aria-label="Donation amount in Indonesian rupiah" required>
+            </div>
+            <div class="amount-presets" aria-label="Suggested donation amounts">
+              <button class="preset-button" type="button" data-amount="25000" aria-pressed="false">Rp25.000</button>
+              <button class="preset-button" type="button" data-amount="50000" aria-pressed="false">Rp50.000</button>
+              <button class="preset-button" type="button" data-amount="100000" aria-pressed="false">Rp100.000</button>
+              <button class="preset-button" type="button" data-amount="200000" aria-pressed="false">Rp200.000</button>
+            </div>
+          </fieldset>
+
+          <div class="form-field">
+            <label class="field-label" for="description">Pesan <span class="optional">(opsional)</span></label>
+            <textarea class="form-control" id="description" name="description" maxlength="500" placeholder="Tinggalkan pesan atau catatan donasi."></textarea>
+          </div>
+
+          <fieldset class="form-field" style="padding: 0; border: 0; margin-inline: 0;">
+            <legend class="group-label">Payment method</legend>
+            <div class="payment-options" role="group" aria-label="Choose a payment method">
+              <button class="payment-button" type="button" data-method="bank_transfer" aria-pressed="true">Bank transfer<span>Virtual account</span></button>
+              <button class="payment-button" type="button" data-method="e_wallet" aria-pressed="false">E-wallet<span>GoPay · OVO</span></button>
+              <button class="payment-button" type="button" data-method="qris" aria-pressed="false">QRIS<span>Scan to pay</span></button>
+            </div>
+            <input type="hidden" id="payment-method" name="payment_method" value="bank_transfer">
+          </fieldset>
+
+          <button class="submit-button" type="submit">Lanjutkan ke pembayaran <span aria-hidden="true">→</span></button>
+          <p class="secure-note"><span aria-hidden="true">●</span> AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA.</p>
+        </form>
+      </section>
+    </div>
+  </main>
+  <script>
+    const alternateNameToggle = document.getElementById('use-alternate-name');
+    if (alternateNameToggle) {
+      const defaultIssuer = document.getElementById('admin-default-issuer');
+      const alternateNameField = document.getElementById('alternate-name-field');
+      const alternateNameInput = document.getElementById('alternate-name');
+      alternateNameToggle.addEventListener('change', () => {
+        const useAlternateName = alternateNameToggle.checked;
+        alternateNameField.hidden = !useAlternateName;
+        alternateNameInput.disabled = !useAlternateName;
+        alternateNameInput.required = useAlternateName;
+        defaultIssuer.disabled = useAlternateName;
+        if (useAlternateName) alternateNameInput.focus();
+      });
+    }
+
+    const amountInput = document.getElementById('amount');
+    const presetButtons = document.querySelectorAll('.preset-button');
+    presetButtons.forEach((button) => {
+      button.addEventListener('click', () => {
+        amountInput.value = button.dataset.amount;
+        presetButtons.forEach((preset) => preset.setAttribute('aria-pressed', String(preset === button)));
+        amountInput.focus();
+      });
+    });
+    amountInput.addEventListener('input', () => {
+      presetButtons.forEach((button) => button.setAttribute('aria-pressed', false));
+    });
+
+    const methodInput = document.getElementById('payment-method');
+    document.querySelectorAll('.payment-button').forEach((button) => {
+      button.addEventListener('click', () => {
+        document.querySelectorAll('.payment-button').forEach((method) => method.setAttribute('aria-pressed', String(method === button)));
+        methodInput.value = button.dataset.method;
+      });
+    });
+  </script>
+</body>
+</html>

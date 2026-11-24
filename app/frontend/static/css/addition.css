@@ -20,6 +20,9 @@
     max-width: 300px;
 }
 
-.Kgi7l {
-    max-width: 200px;
+.card-body .text-muted {
+    color: #C3C3D9 !important;
+}
+textarea.form-control {
+    min-height: calc((1.5em + 1.55rem + 2px) * 3);
 }

@@ -1,24 +1,26 @@
 from datetime import datetime, timedelta, timezone
-import logging
 import secrets
 from typing import Annotated, List
 
-from fastapi import APIRouter, Cookie, Depends, HTTPException, Response
-from sqlalchemy import or_, select
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
+from fastapi.responses import RedirectResponse
+from sqlalchemy import delete, or_, select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session, selectinload
 
+from app import logger
 from app.database.session import get_db
 from app.dependencies.user import UserLoginForm, UserRegisterForm
 from app.function import get_current_user, hash_password, verify_password, registration_user_exist, get_current_admin
+from app.function.user_services import get_optional_session, get_optional_user
 from app.models import Notification, NotificationStatuses, User, UserSession
 from app.models.enums import NotifyType
 from app.schemas.notification import NotificationSchema, NotificationStatusSchema
 from app.schemas.user import UserLogMessageResponse
+from app.services.exceptions import ResourceUnderConstructionError
 
 
-logger = logging.getLogger(__name__)
-
-router = APIRouter(
+router_user = APIRouter(
     prefix="/user",
     tags=["User"],
 )
@@ -28,7 +30,8 @@ router_notification = APIRouter(
     tags=["Event", "User"],
 )
 
-@router.post("/login", response_model=UserLogMessageResponse)
+
+@router_user.post("/login", response_model=UserLogMessageResponse)
 def user_login(response: Response, input: Annotated[UserLoginForm, Depends()], db: Session = Depends(get_db)):
     if not input.identity:
         raise HTTPException(
@@ -80,21 +83,40 @@ def user_login(response: Response, input: Annotated[UserLoginForm, Depends()], d
             max_age=60 * 60 * 24 * 30,
         )
 
+        logger.info(f"UserLogger: User {user.username} was logged in. UUID: {user.user_id}")
+
         return {"message": "Logged in"}
     
     else:
+        logger.warning(f"UserLogger: User {user.username} tried to login with wrong password. UUID: {user.user_id}")
         raise HTTPException(
             status_code=401,
             detail="Password incorrect"
         )
 
-@router.post("/logout", response_model=UserLogMessageResponse)
-def user_logout(response: Response):
+
+@router_user.post("/logout", response_model=UserLogMessageResponse)
+def user_logout(response: Response, user_session: UserSession | None = Depends(get_optional_session), user: User | None = Depends(get_optional_user), db: Session = Depends(get_db)):
     response.delete_cookie("session_id")
+    
+    if user_session:
+        try:
+            stmt = delete(UserSession).where(UserSession.id == user_session.id)
+            execute = db.execute(stmt)
+            db.commit()
+        except SQLAlchemyError:
+            db.rollback()
+            logger.error(f"UserLogger: Cannot remove session with id: {user_session.id}")
+    else:
+        logger.info("UserLogger: Cannot find the session")
+
+    if user:
+        logger.info(f"UserLogger: User {user.username} was logged out. UUID: {user.user_id}")
 
     return {"message": "Logged out"}
 
-@router.post("/register", response_model=UserLogMessageResponse)
+
+@router_user.post("/register", response_model=UserLogMessageResponse)
 def user_register(response: Response, usr: Annotated[UserRegisterForm, Depends()], session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     if session_id:
         raise HTTPException(
@@ -124,6 +146,7 @@ def user_register(response: Response, usr: Annotated[UserRegisterForm, Depends()
             username=usr.username,
             email=usr.email,
             password_hash=hash_password(usr.password),
+            display_name=usr.name
         )
 
         db.add(user)
@@ -139,8 +162,10 @@ def user_register(response: Response, usr: Annotated[UserRegisterForm, Depends()
 
         db.add(user_session)
         db.commit()
+        logger.info(1, f"UserLogger: {user.user_id} was created with username {user.username}")
 
     except Exception as e:
+        logger.error(f"UserLogger: Failed to create account for user {usr.username}")
         db.rollback()
         logger.exception(e)
         raise HTTPException(
@@ -158,22 +183,33 @@ def user_register(response: Response, usr: Annotated[UserRegisterForm, Depends()
 
     return {"message": "Registered successfully"}
 
-@router.get("/{user_uuid}")
+
+@router_user.get("/profile/{user_uuid}")
 def get_user_profile(user_uuid: str, session_id: str | None = Cookie(default=None), db: Session = Depends(get_db)):
     """Current user information."""
 
     # Not yet implemented
 
-@router.get("", response_model=List[NotificationSchema])
+    logger.info("Is not implemented service: 'user_profile'")
+    return RedirectResponse(url="/not-found", status_code=404)
+
+
+@router_user.get("", response_model=List[NotificationSchema])
 def read_all_notifications(db: Session = Depends(get_db), _: User = Depends(get_current_admin)):
     """Read all notification container from database."""
+
+    return RedirectResponse(url="/not-found", status_code=404)
 
     notifications_list = db.query(Notification).all()
     return notifications_list
 
+
 @router_notification.get("/get", response_model=List[NotificationSchema])
 def read_notification(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Read all notification from database. Login required."""
+
+    logger.info("Is not implemented service: 'read_notification'")
+    return RedirectResponse(url="not-found", status_code=404)
 
     notifications_statuses = db.scalars(
         select(NotificationStatuses)
@@ -214,9 +250,13 @@ def read_notification(user: User = Depends(get_current_user), db: Session = Depe
 
     return fetched_notification
 
+
 @router_notification.get("/{notification_id}/status", response_model=NotificationStatusSchema)
 def get_notification_status(notification_id: str, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     """Get the read status of a specific notification for a user."""
+
+    logger.info("Is not implemented service: 'get_notification_status'")
+    return RedirectResponse(url="not-found", status_code=404)
 
     mock_status = db.scalar(
         select(NotificationStatuses)
@@ -256,11 +296,22 @@ def get_notification_status(notification_id: str, user: User = Depends(get_curre
         is_read=mock_status.is_read,
     )
 
+
 @router_notification.patch("/{notification_id}/read", response_model=NotificationSchema)
 def mark_as_read(notification_id: str, user_id: int, db: Session = Depends(get_db)):
     """Mark a specific notification as read for the current user."""
     
+    logger.info("Is not implemented service: 'mark_as_red'")
+    return RedirectResponse(url="not-found", status_code=404)
+
     # Mocking update:
     updated_notification = Notification(id=notification_id, type=NotifyType.SYSTEM, message="Server maintenance tonight.", link="/", is_admin_only=False, created_at=datetime.now())
 
     return updated_notification
+
+
+@router_user.get("/profile")
+def get_profile(request: Request):
+
+    logger.info("Is not implemented service: 'get_profile'")
+    raise ResourceUnderConstructionError()

@@ -1,0 +1,26 @@
+{% for transaction in transactions %}
+{% set transaction_type = transaction.flow.value if transaction.flow.value is defined else transaction.flow %}
+{% set transaction_status = transaction.status.value if transaction.status.value is defined else transaction.status %}
+<tr class="transaction-row" tabindex="0" aria-haspopup="dialog"
+  aria-label="Open details for transaction #TRX-{{ '%04d' | format(transaction.inx) }}"
+  data-id="{{ transaction.inx }}" data-type="{{ transaction_type | title }}"
+  data-status="{{ transaction_status | title }}" data-issuer="{{ transaction.issuer or 'Anonymous' }}"
+  data-issuer-editable="{{ 'false' if transaction.issuer in account_issuers else 'true' }}"
+  data-amount="{{ transaction.amount | rupiah }}" data-amount-raw="{{ transaction.amount }}"
+  data-description="{{ transaction.description or '' }}"
+  data-payment="{{ transaction.payment_method or '—' }}"
+  data-created="{{ transaction.created_at.strftime('%d %b %Y, %H:%M') if transaction.created_at else '—' }}"
+  data-modified="{{ transaction.last_modified_at.strftime('%d %b %Y, %H:%M') if transaction.last_modified_at else '—' }}"
+  data-modified-by="{{ transaction.last_modified_by or 'System' }}">
+  <td class="muted-cell">#TR-{{ "%04d" | format(transaction.inx) }}</td>
+  <td>
+    <div class="transaction-badges">
+      <span class="tags-badge {{ transaction_type | lower }}">{{ transaction_type | title }}</span>
+      <span class="tags-badge status-badge {{ transaction_status | lower }}">{{ transaction_status | title }}</span>
+    </div>
+  </td>
+  <td>{{ transaction.issuer or "Anonymous" }}</td>
+  <td class="amount">{{ transaction.amount | rupiah }}</td>
+  <td class="date-cell">{{ transaction.created_at.strftime("%d %b %Y, %H:%M") if transaction.created_at else "—" }}</td>
+</tr>
+{% endfor %}

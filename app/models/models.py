@@ -3,7 +3,7 @@ from os import environ
 import secrets
 import uuid
 
-from sqlalchemy import ARRAY, Date, DateTime, String, false, func, Enum as SQLEnum
+from sqlalchemy import ARRAY, CheckConstraint, Date, DateTime, Integer, String, false, func
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -33,8 +33,13 @@ class User(Base):
     )
 
     username: Mapped[str] = mapped_column(
-        String(30),
+        String(40),
         unique=True,
+        nullable=False,
+    )
+
+    display_name: Mapped[str] = mapped_column(
+        String(40),
         nullable=False,
     )
 
@@ -158,11 +163,13 @@ class NotificationStatuses(Base):
 
 class Transaction(Base):
     __tablename__ = "transactions"
-    __table_args__ = {"schema": "economy_donation"}
+    __table_args__ = (   
+        CheckConstraint("amount >= 0", name="check_amount_min_value"),
+        {"schema": "economy_donation"}
+    )
+    inx: Mapped[int] = mapped_column(primary_key=True)
 
-    id: Mapped[int] = mapped_column(primary_key=True)
-
-    type: Mapped[TransactionType] = mapped_column(
+    flow: Mapped[TransactionType] = mapped_column(
        postgresql.ENUM(
            TransactionType,
            name="transactiontype",
@@ -170,7 +177,10 @@ class Transaction(Base):
        )
     )
 
-    amount: Mapped[int]
+    amount: Mapped[int] = mapped_column(
+        Integer,
+        nullable=False,
+    )
 
     description: Mapped[str | None] = mapped_column(
         String(500),

@@ -9,6 +9,7 @@ from app.dependencies import common_id_limit_parameters
 from app.function import get_current_admin
 from app.models import Goal, User
 from app.schemas.goal import GoalCreate, GoalResponse
+from app.services.exceptions import ResourceUnderConstructionError
 
 
 logger = logging.getLogger(__name__)
@@ -35,8 +36,12 @@ def create_goal(goal: GoalCreate, db: Session = Depends(get_db), _: User = Depen
 
     return db_goal
 
+
 @router.get("", response_model=list[GoalResponse]|GoalResponse)
 def get_goals(commons: Annotated[dict, Depends(common_id_limit_parameters)], db: Session = Depends(get_db)):
+
+    raise ResourceUnderConstructionError()
+
     if commons["target_id"] is not None:
         goal = db.query(Goal).filter(Goal.id == commons["target_id"]).first()
     else:

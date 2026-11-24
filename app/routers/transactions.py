@@ -1,33 +1,29 @@
 
 from datetime import datetime, timezone
-import logging
-from typing import Annotated
 
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from pydantic import ValidationError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app import templates
+from app import templates, logger
 from app.database.session import get_db
-from app.dependencies import common_id_limit_parameters
 from app.function import AppSystem
-from app.function.user_services import get_optional_user
+from app.function.user_services import get_current_admin, get_optional_user
 from app.models import Transaction, User
 from app.models.enums import TransactionType, TransactionStatus
-from app.schemas.transaction import AdminTransactionCreate, TransactionResponse, UserTransactionCreate
+from app.schemas.transaction import AdminTransactionCreate, TransactionResponse, TransactionUpdate, UserTransactionCreate
 
-
-logger = logging.getLogger(__name__)
 
 router = APIRouter(
     prefix="/donation",
     tags=["Transactions", "Donation"],
 )
 
+# Register a donation request
 @router.post("/new", response_model=TransactionResponse)
-def create_transaction(payload: dict = Body(...), user: User | None = Depends(get_optional_user), db: Session = Depends(get_db)):
+async def create_transaction(request: Request, user: User | None = Depends(get_optional_user), db: Session = Depends(get_db)):
     is_admin = user is not None and user.is_admin
 
     model = (
@@ -36,6 +32,9 @@ def create_transaction(payload: dict = Body(...), user: User | None = Depends(ge
         else UserTransactionCreate
     )
 
+    form_data = await request.form()
+    payload = dict(form_data)
+
     try:
         data = model.model_validate(payload)
     except ValidationError as exc:
@@ -43,6 +42,15 @@ def create_transaction(payload: dict = Body(...), user: User | None = Depends(ge
             status_code=422,
             detail=exc.errors(include_url=False)
         ) from exc
+
+    if is_admin:
+        # Admins can optionally attribute the transaction to someone else.
+        data.issuer = data.issuer or user.username
+    elif user is not None:
+        # Regular users cannot submit a different issuer through the form.
+        data.issuer = user.username
+    else:
+        data.issuer = data.issuer or "Anonymous"
 
     if is_admin:
         transaction_type = data.type
@@ -82,6 +90,7 @@ def create_transaction(payload: dict = Body(...), user: User | None = Depends(ge
 
     return db_transaction
 
+# Donation form
 @router.get("/new", response_class=HTMLResponse)
 def new_transaction_page(
     request: Request,
@@ -89,7 +98,7 @@ def new_transaction_page(
 ):
     return templates.TemplateResponse(
         request=request,
-        name="transactions/new.html",
+        name="donation/new.html",
         context={
             "user": user,
             "is_logged_in": user is not None,
@@ -97,15 +106,68 @@ def new_transaction_page(
                 user is not None
                 and user.is_admin == True
             ),
+            "transaction_types": list(TransactionType),
+            "transaction_statuses": list(TransactionStatus),
         },
     )
 
-@router.get("/", response_model=list[TransactionResponse]|TransactionResponse)
-def get_transactions(commons: Annotated[dict, Depends(common_id_limit_parameters)], db: Session = Depends(get_db)):
-    if commons["target_id"] is not None:
-        transactions = db.query(Transaction).filter(Transaction.id == commons["target_id"]).first()
-    else:
-        transactions = db.query(Transaction).limit(limit=commons["limit"]).all()
+@router.patch("/{transaction_id}", response_model=TransactionResponse)
+def edit_transaction(
+    transaction_id: int,
+    changes: TransactionUpdate,
+    user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    transaction = db.get(Transaction, transaction_id)
+    if transaction is None:
+        raise HTTPException(status_code=404, detail="Transaction not found")
+
+    updates = changes.model_dump(exclude_unset=True, exclude_none=True)
+    if not updates:
+        raise HTTPException(status_code=422, detail="Provide at least one field to update")
+
+    new_issuer = updates.get("issuer")
+    if new_issuer is not None and new_issuer != transaction.issuer and transaction.issuer:
+        linked_account = db.query(User.id).filter(User.username == transaction.issuer).first()
+        if linked_account:
+            raise HTTPException(
+                status_code=409,
+                detail="The issuer belongs to a user account and cannot be changed.",
+            )
+
+    for field, value in updates.items():
+        setattr(transaction, field, value)
+
+    transaction.last_modified_at = datetime.now(timezone.utc)
+    transaction.last_modified_by = str(user.user_id)
+
+    try:
+        db.commit()
+        db.refresh(transaction)
+    except SQLAlchemyError:
+        db.rollback()
+        logger.exception("Failed to update transaction %s", transaction_id)
+        raise HTTPException(status_code=500, detail="Unable to update transaction") from None
+
+    return transaction
+
+# Public recent donation
+@router.get("/recent", response_model=list[TransactionResponse]|TransactionResponse)
+def get_transactions(
+    page: int = Query(default=1, ge=1, le=10),
+    db: Session = Depends(get_db),
+):
+    transactions = (
+        db.query(Transaction)
+        .filter(
+            Transaction.flow == TransactionType.INCOME,
+            Transaction.status == TransactionStatus.CONFIRMED,
+        )
+        .order_by(Transaction.created_at.desc(), Transaction.inx.desc())
+        .limit(25)
+        .offset((page - 1) * 25)
+        .all()
+    )
 
     if not transactions:
         raise HTTPException(
@@ -116,13 +178,23 @@ def get_transactions(commons: Annotated[dict, Depends(common_id_limit_parameters
     return transactions
 
 
-@router.get("/recent")
-def get_recent(request: Request, db: Session = Depends(get_db)):
+@router.get("/recent/data") # Public recent donation
+def get_recent(id: int, request: Request, db: Session = Depends(get_db)):
     transactions = (
         db.query(Transaction)
-        .order_by(Transaction.created_at.desc())
-        .all()
+        .filter(
+            Transaction.inx == id,
+            Transaction.flow == TransactionType.INCOME,
+            Transaction.status == TransactionStatus.CONFIRMED,
+        )
+        .first()
     )
+
+    if not transactions:
+        raise HTTPException(
+            status_code=404,
+            detail="Transaction not found",
+        )
 
     return templates.TemplateResponse(
         request=request,

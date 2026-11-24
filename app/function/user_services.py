@@ -8,6 +8,7 @@ from app.database.session import get_db
 from app.dependencies.user import UserRegisterForm
 from app.models import User, UserSession, Notification, NotificationStatuses
 from app.schemas.notification import NotificationCreate, NotificationSchema
+from app.services.exceptions import AppError
 
 
 def get_optional_session(
@@ -41,7 +42,7 @@ def update_session_activity(
 
     db = Session.object_session(db_session)
     if not db:
-        return
+        raise AppError(detail="Cannot process user session.")
 
     now = datetime.now(timezone.utc)
 
@@ -62,7 +63,7 @@ def get_optional_user(
 
     db = Session.object_session(db_session)
     if not db:
-        return
+        raise AppError(detail="Cannot process user session.")
 
     return db.scalar(
         select(User).where(

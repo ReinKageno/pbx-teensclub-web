@@ -10,3 +10,4 @@ class UserRegisterForm(BaseModel):
     username: str
     password: str
     confirm_password: str
+    name: str

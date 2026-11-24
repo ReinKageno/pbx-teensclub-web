@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Transaction Logs</title>
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 <main>
@@ -30,9 +30,9 @@
       <tbody>
         {% for transaction in transactions %}
         {% set transaction_type =
-          transaction.type.value
-          if transaction.type.value is defined
-          else transaction.type
+          transaction.flow.value
+          if transaction.flow.value is defined
+          else transaction.flow
         %}
         {% set transaction_status =
           transaction.status.value
@@ -42,7 +42,7 @@
 
         <tr>
           <td class="muted-cell">
-            TCR-{{ "%04d" | format(transaction.id) }}
+            TCR-{{ "%04d" | format(transaction.inx) }}
           </td>
 
           <td>

@@ -22,7 +22,7 @@ def query_transactions(limit: int = 10, db: Session = Depends(get_db)):
 def query_recent_incomes(limit: int = 10, db: Session = Depends(get_db)):
     recent_incomes:list[Transaction] = (
         db.query(Transaction)
-        .filter(Transaction.type == TransactionType.INCOME)
+        .filter(Transaction.flow == TransactionType.INCOME)
         .order_by(Transaction.created_at.desc())
         .limit(limit)
         .all()
@@ -36,7 +36,7 @@ def query_recent_incomes(limit: int = 10, db: Session = Depends(get_db)):
 def query_recent_expenses(limit: int = 10, db: Session = Depends(get_db)):
     recent_expenses:list[Transaction] = (
         db.query(Transaction)
-        .filter(Transaction.type == TransactionType.EXPENSE)
+        .filter(Transaction.flow == TransactionType.EXPENSE)
         .order_by(Transaction.created_at.desc())
         .limit(limit)
         .all()

@@ -9,13 +9,20 @@
     --secondary-color-rgb: 253, 239, 223;
     --body-background: #2e2e34;
     --body-background-rgb: 46, 46, 52;
+    --color-muted: #fbf9f6;
+    --text-muted:#a7acab;
 
     --electric-sapphire: #2667ff;
     --electric-sapphire-rgb: 38, 103, 255;
 
+    --white-color: #fff;
+    --white-color-rgb: 255, 255, 255;
+    --black-color: #000;
+    --black-color-rgb: 0, 0, 0;
+
     --text-color: #0a0a0b;
-    --text-color-rgb: rgb(10, 10, 11);
-    --text-disabled: #c4cbca;
+    --text-color-rgb: 10, 10, 11;
+    --text-disabled: #a7acab;
     --text-disabled-rgb: 196, 203, 202;
     --text-link: #3682ed;
 
@@ -248,40 +255,6 @@ footer * {
 .bold-first > :first-child {
     font-size: 1.2em;
     font-weight: bold;
-}
-
-.footer-content {
-    margin-bottom: 4rem;
-}
-
-.footer-side {
-    font-size: var(--font-size-m);
-}
-.footer-side > :first-child {
-    font-size: 2em;
-    margin-bottom: 1rem;
-}
-
-.foot-logo-name {
-    display: flex;
-    align-items: center;
-    justify-content: start;
-    padding-left: 1rem;
-}
-
-.foot-quote {
-    margin-bottom: 2rem;
-}
-
-.foot-sign {
-    font-size: 12px;
-}
-
-.foot-item > * {
-    transition: filter .2s ease;
-}
-.foot-item a:hover {
-    filter: invert(.8);
 }
 
 .animated-icon > .icon-ani {
@@ -586,6 +559,46 @@ dialog.detailTransaction {
     align-items: center;
 }
 
+.footer-content {
+    margin-bottom: 4rem;
+}
+
+.footer-side {
+    font-size: var(--font-size-m);
+}
+.footer-side > :first-child {
+    font-size: 2em;
+    margin-bottom: 1rem;
+}
+
+.foot-logo-name {
+    display: flex;
+    align-items: center;
+    justify-content: start;
+    padding-left: 1rem;
+}
+
+.foot-quote {
+    margin-bottom: 2rem;
+}
+
+.foot-sign {
+    font-size: 12px;
+}
+
+.foot-item > * {
+    transition: color .2s ease, padding .2s ease;
+}
+.foot-item a:hover {
+    color: #fffcf8;
+    padding-left: 1rem;
+}
+
+.foot-menu {
+    max-width: 200px;
+    color: #ffead4;
+}
+
 .font-xs {
     font-size: var(--font-size-xs);
 }
@@ -687,7 +700,7 @@ dialog.detailTransaction {
 .round-5 {
     border-radius: var(--round-5);
 }
-.round- {
+.round-6 {
     border-radius: var(--round-6);
 }
 .round-pill {

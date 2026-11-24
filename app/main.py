@@ -1,49 +1,55 @@
-import threading
+import asyncio
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 from fastapi.staticfiles import StaticFiles
 
 from app import templates
 from app.function.donation_services import schedule_update_goal
 from app.function.frontend import rupiah
 from app.services.handlers import register_exception_handlers
-from app.routers import admin, goal, transactions, users
+from app.routers import admin, application, goal, pages, transactions, users
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    stop_event = asyncio.Event()
+    updater_task = asyncio.create_task(schedule_update_goal(60, stop_event))
+    try:
+        yield
+    finally:
+        stop_event.set()
+        await updater_task
+
 
 app = FastAPI(
     title="KTeensApp",
     summary="Piwulang Becik Teens Club application powered and supported by Kanaede.",
     description="KTeensApp API for private community built by Kanaede to support Piwulang Becik that also known as PBx.",
-    version="0.0.1 alpha"
+    version="0.0.1 alpha",
+    lifespan=lifespan,
 )
 
 # Redirect the main path
-# app.frontend("/", directory="dist", fallback="index.html")
+app.frontend("/", directory="dist/", fallback="404.html")
 
 register_exception_handlers(app)
 
+app.include_router(application.router)
 app.include_router(admin.router)
 app.include_router(goal.router)
 app.include_router(transactions.router)
-app.include_router(users.router)
+app.include_router(users.router_user)
 app.include_router(users.router_notification)
+app.include_router(pages.router)
 
 templates.env.filters["rupiah"] = rupiah
 
 app.mount(
     "/static",
-    StaticFiles(directory="app/static"),
+    StaticFiles(directory="app/frontend/static"),
     name="static",
 )
 
-@app.get("/")
-async def root():
-    return {"message": "Hello Bigger Applications!"}
-
-jobstores = {
-    'default': SQLAlchemyJobStore
-}
-
-goal_updater = threading.Thread(target=schedule_update_goal, args=(60,))
-
-goal_updater.start()
+# @app.get("/")
+# async def root():
+#     return {"message": "Hello Bigger Applications!"}

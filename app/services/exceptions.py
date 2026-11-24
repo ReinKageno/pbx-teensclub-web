@@ -4,10 +4,16 @@ class AppError(Exception):
 
     status_code = 500
     default_detail = "An application error occurred."
+    default_msg = "Internal server error"
 
-    def __init__(self, detail: str | None = None):
+    def __init__(self,
+        detail: str | None = None,
+        msg: str | None = None,
+    ):
         self.detail = detail or self.default_detail
-        super().__init__(self.detail)
+        self.msg = msg or self.default_msg
+
+        super().__init__(self.detail, self.msg)
 
 
 # Resources
@@ -15,11 +21,17 @@ class AppError(Exception):
 class ResourceNotFoundError(AppError):
     status_code = 404
     default_detail = "The requested resource was not found."
-
+    default_msg = "Not Found"
+    
 
 class ResourceAlreadyExistsError(AppError):
     status_code = 409
     default_detail = "The resource already exists."
+
+class ResourceUnderConstructionError(AppError):
+    status_code = 501
+    default_detail = "Under construction or not implemented."
+    default_msg = "This page is under construction or not implemented"
 
 
 # Authentication and authorization
