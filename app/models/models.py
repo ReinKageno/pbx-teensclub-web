@@ -7,7 +7,7 @@ from sqlalchemy import ARRAY, CheckConstraint, Date, DateTime, Integer, String, 
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-from app.models.enums import GoalStatus, NotifyType, TransactionStatus, TransactionType
+from app.models.enums import GoalStatus, NotifyLevel, TransactionStatus, TransactionIO
 
 
 class Base(DeclarativeBase):
@@ -111,14 +111,14 @@ class Notification(Base):
         nullable=False,
     )
 
-    type: Mapped[NotifyType] = mapped_column(
+    level: Mapped[NotifyLevel] = mapped_column(
         postgresql.ENUM(
-            NotifyType,
-            name="notifytype",
+            NotifyLevel,
+            name="notifylevel",
             schema="server",
         ),
         
-        default=NotifyType.SYSTEM,
+        default=NotifyLevel.SYSTEM,
         nullable=False,
     )
 
@@ -169,10 +169,10 @@ class Transaction(Base):
     )
     inx: Mapped[int] = mapped_column(primary_key=True)
 
-    flow: Mapped[TransactionType] = mapped_column(
+    io: Mapped[TransactionIO] = mapped_column(
        postgresql.ENUM(
-           TransactionType,
-           name="transactiontype",
+           TransactionIO,
+           name="transactionio",
            schema="economy_donation"
        )
     )

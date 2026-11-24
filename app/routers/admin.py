@@ -12,7 +12,7 @@ from app.function.transaction_services import query_transactions
 from app.function.donation_services import sum_total_donation
 from app.function.user_services import get_current_admin
 from app.models import Transaction, User
-from app.models.enums import TransactionStatus, TransactionType
+from app.models.enums import TransactionStatus, TransactionIO
 from app.services.exceptions import ResourceUnderConstructionError
 
 router = APIRouter(
@@ -44,7 +44,7 @@ def _monthly_income_expense_chart(db: Session, month_count: int = CHART_MONTHS):
 
     monthly_totals = {key: {"income": 0, "expense": 0} for key in month_keys}
     records = (
-        db.query(Transaction.created_at, Transaction.flow, Transaction.amount)
+        db.query(Transaction.created_at, Transaction.io, Transaction.amount)
         .filter(
             Transaction.status != TransactionStatus.CANCELLED,
             Transaction.created_at >= start,
@@ -107,8 +107,8 @@ def _filtered_transactions(db: Session, q: str):
 
     transaction_type = parsed_filters.get("type", "").lower()
     if transaction_type:
-        if transaction_type in {item.value for item in TransactionType}:
-            query = query.filter(Transaction.flow == TransactionType(transaction_type))
+        if transaction_type in {item.value for item in TransactionIO}:
+            query = query.filter(Transaction.io == TransactionIO(transaction_type))
         else:
             errors.append("Use income or expense for #type.")
             query = query.filter(false())

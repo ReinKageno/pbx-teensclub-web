@@ -3,11 +3,11 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict
 
-from app.models.enums import NotifyType
+from app.models.enums import NotifyLevel
 
 
 class NotificationBase(BaseModel):
-    type: NotifyType
+    type: NotifyLevel
     message: str
     link: str | None = False
     is_admin_only: bool = False
@@ -28,7 +28,7 @@ class NotificationSchema(NotificationBase):
 
 class NotificationStatusSchema(BaseModel):
     id: str
-    type: NotifyType
+    type: NotifyLevel
     is_admin_only: bool = False
     created_at: datetime
     is_read: bool = False

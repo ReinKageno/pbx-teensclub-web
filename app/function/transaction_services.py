@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.models import Transaction
-from app.models.enums import TransactionType
+from app.models.enums import TransactionIO
 from app.services.exceptions import ResourceNotFoundError
 
 
@@ -22,7 +22,7 @@ def query_transactions(limit: int = 10, db: Session = Depends(get_db)):
 def query_recent_incomes(limit: int = 10, db: Session = Depends(get_db)):
     recent_incomes:list[Transaction] = (
         db.query(Transaction)
-        .filter(Transaction.flow == TransactionType.INCOME)
+        .filter(Transaction.io == TransactionIO.INCOME)
         .order_by(Transaction.created_at.desc())
         .limit(limit)
         .all()
@@ -36,7 +36,7 @@ def query_recent_incomes(limit: int = 10, db: Session = Depends(get_db)):
 def query_recent_expenses(limit: int = 10, db: Session = Depends(get_db)):
     recent_expenses:list[Transaction] = (
         db.query(Transaction)
-        .filter(Transaction.flow == TransactionType.EXPENSE)
+        .filter(Transaction.io == TransactionIO.EXPENSE)
         .order_by(Transaction.created_at.desc())
         .limit(limit)
         .all()

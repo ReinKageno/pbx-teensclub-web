@@ -2,7 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.enums import TransactionStatus, TransactionType
+from app.models.enums import TransactionStatus, TransactionIO
 
 
 class TransactionBase(BaseModel):
@@ -30,12 +30,12 @@ class UserTransactionCreate(BaseModel):
 
 class AdminTransactionCreate(UserTransactionCreate):
     amount: int = Field(gt=0)
-    type: TransactionType | None = TransactionType.INCOME
+    type: TransactionIO | None = TransactionIO.INCOME
     status: TransactionStatus | None = TransactionStatus.PENDING
 
 class TransactionResponse(TransactionBase):
     issuer: str | None
-    type: TransactionType
+    type: TransactionIO
     status: TransactionStatus
 
     model_config = {
@@ -60,6 +60,6 @@ class TransactionUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=500)
     payment_method: str | None = Field(default=None, max_length=50)
     status: TransactionStatus | None = None
-    type: TransactionType | None = None
+    type: TransactionIO | None = None
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)

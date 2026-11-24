@@ -24,7 +24,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="KTeensApp",
     summary="Piwulang Becik Teens Club application powered and supported by Kanaede.",
-    description="KTeensApp API for private community built by Kanaede to support Piwulang Becik that also known as PBx.",
+    description="KTeensApp API for private community built by Kanaede to support Piwulang Becik TeensClub that also known as PBx Teens Club.",
     version="0.0.1 alpha",
     lifespan=lifespan,
 )

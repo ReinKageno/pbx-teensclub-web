@@ -14,7 +14,7 @@ from app.dependencies.user import UserLoginForm, UserRegisterForm
 from app.function import get_current_user, hash_password, verify_password, registration_user_exist, get_current_admin
 from app.function.user_services import get_optional_session, get_optional_user
 from app.models import Notification, NotificationStatuses, User, UserSession
-from app.models.enums import NotifyType
+from app.models.enums import NotifyLevel
 from app.schemas.notification import NotificationSchema, NotificationStatusSchema
 from app.schemas.user import UserLogMessageResponse
 from app.services.exceptions import ResourceUnderConstructionError
@@ -305,7 +305,7 @@ def mark_as_read(notification_id: str, user_id: int, db: Session = Depends(get_d
     return RedirectResponse(url="not-found", status_code=404)
 
     # Mocking update:
-    updated_notification = Notification(id=notification_id, type=NotifyType.SYSTEM, message="Server maintenance tonight.", link="/", is_admin_only=False, created_at=datetime.now())
+    updated_notification = Notification(id=notification_id, type=NotifyLevel.SYSTEM, message="Server maintenance tonight.", link="/", is_admin_only=False, created_at=datetime.now())
 
     return updated_notification
 

@@ -7,7 +7,7 @@ from sqlalchemy import func, select, case
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, get_db
-from app.models.enums import GoalStatus, TransactionStatus, TransactionType
+from app.models.enums import GoalStatus, TransactionStatus, TransactionIO
 from app.models import Transaction, Goal
 
 
@@ -17,13 +17,13 @@ def sum_total_donation(
     stmt = select(
         func.coalesce(
             func.sum(case(
-                (Transaction.flow == TransactionType.INCOME, Transaction.amount),
+                (Transaction.io == TransactionIO.INCOME, Transaction.amount),
                 else_=0,
             )),
         0,).label("income"),
         func.coalesce(
             func.sum(case(
-                (Transaction.flow == TransactionType.EXPENSE, Transaction.amount),
+                (Transaction.io == TransactionIO.EXPENSE, Transaction.amount),
                 else_=0,
             )),0,).label("expense"),
     ).where(Transaction.status == TransactionStatus.CONFIRMED,)
@@ -45,26 +45,26 @@ def sum_recent_donation(
     if confirmed_only:
         income = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.flow == TransactionType.INCOME)
+            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.io == TransactionIO.INCOME)
             .limit(limit=limit)
         )
     
         expense = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.flow == TransactionType.EXPENSE)
+            .where(Transaction.status == TransactionStatus.CONFIRMED, Transaction.io == TransactionIO.EXPENSE)
             .limit(limit=limit)
         )
 
     else:
         income = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.flow == TransactionType.INCOME)
+            .where(Transaction.io == TransactionIO.INCOME)
             .limit(limit=limit)
         )
 
         expense = db.scalar(
             select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(Transaction.flow == TransactionType.EXPENSE)
+            .where(Transaction.io == TransactionIO.EXPENSE)
             .limit(limit=limit)
         )
 
@@ -176,7 +176,8 @@ def goal_calculator(db: Session, extract_history: bool = False) -> list:
             .where(
                 Transaction.status == TransactionStatus.CONFIRMED,
                 func.date(Transaction.created_at) >= database.start_date,
-                func.date(Transaction.created_at) <= database.end_date
+                func.date(Transaction.created_at) <= database.end_date,
+                Transaction.io == TransactionIO.INCOME,
             )
         )
     

@@ -1,13 +1,13 @@
 from enum import Enum
 
 
-class NotifyType(str, Enum):
+class NotifyLevel(str, Enum):
     EMAIL = "email"
     SYSTEM = "system"
     DONATION = "donation"
     SAVING = "saving"
 
-class TransactionType(str, Enum):
+class TransactionIO(str, Enum):
     INCOME = "income"
     EXPENSE = "expense"
 

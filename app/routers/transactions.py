@@ -12,7 +12,7 @@ from app.database.session import get_db
 from app.function import AppSystem
 from app.function.user_services import get_current_admin, get_optional_user
 from app.models import Transaction, User
-from app.models.enums import TransactionType, TransactionStatus
+from app.models.enums import TransactionIO, TransactionStatus
 from app.schemas.transaction import AdminTransactionCreate, TransactionResponse, TransactionUpdate, UserTransactionCreate
 
 
@@ -56,7 +56,7 @@ async def create_transaction(request: Request, user: User | None = Depends(get_o
         transaction_type = data.type
         transaction_status = data.status
     else:
-        transaction_type = TransactionType.INCOME
+        transaction_type = TransactionIO.INCOME
         transaction_status = TransactionStatus.PENDING
 
     now = datetime.now(timezone.utc)
@@ -106,7 +106,7 @@ def new_transaction_page(
                 user is not None
                 and user.is_admin == True
             ),
-            "transaction_types": list(TransactionType),
+            "transaction_types": list(TransactionIO),
             "transaction_statuses": list(TransactionStatus),
         },
     )
@@ -160,7 +160,7 @@ def get_transactions(
     transactions = (
         db.query(Transaction)
         .filter(
-            Transaction.flow == TransactionType.INCOME,
+            Transaction.io == TransactionIO.INCOME,
             Transaction.status == TransactionStatus.CONFIRMED,
         )
         .order_by(Transaction.created_at.desc(), Transaction.inx.desc())
@@ -184,7 +184,7 @@ def get_recent(id: int, request: Request, db: Session = Depends(get_db)):
         db.query(Transaction)
         .filter(
             Transaction.inx == id,
-            Transaction.flow == TransactionType.INCOME,
+            Transaction.io == TransactionIO.INCOME,
             Transaction.status == TransactionStatus.CONFIRMED,
         )
         .first()
