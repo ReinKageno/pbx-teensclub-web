@@ -1,5 +1,5 @@
 
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import asyncio
 
 from fastapi import Depends
@@ -151,32 +151,98 @@ async def schedule_update_goal(interval_minutes: int, stop_event: asyncio.Event)
         except asyncio.TimeoutError:
             pass
 
-def goal_calculator(db: Session, extract_history: bool = False) -> list:
-    statuses = [GoalStatus.ACTIVE, GoalStatus.UPCOMING]
-    if extract_history:
-        statuses.append(GoalStatus.FINISHED)
+def goal_calculator(
+    db: Session,
+    extract_history: bool = False,
+    goal_id: int | None = None,
+    limit: int | None = None,
+) -> list:
+    """Calculate milestone progress by passing one fund total through its date chain.
 
-    # Fetch every requested goal. Each goal gets its own filtered aggregate so
-    # two active goals never share a mutable running total.
-    goals = db.scalars(
-        select(Goal)
-        .where(Goal.status.in_(statuses))
-        .order_by(Goal.start_date, Goal.id)
+    Exact date-range duplicates are chained by creation order. Consecutive
+    inclusive date ranges are chained when the prior end date is the day before
+    the next start date. A gap intentionally starts a new fund chain.
+    """
+    all_goals = db.scalars(
+        select(Goal).order_by(Goal.start_date, Goal.created_at, Goal.id)
     ).all()
+    goals_by_id = {goal.id: goal for goal in all_goals}
 
+    # Build one predecessor link per milestone. Duplicate periods take priority;
+    # otherwise a milestone can follow one whose inclusive date range ends the
+    # day before it starts.
+    previous_goal: dict[int, int] = {}
+    last_by_dates: dict[tuple[date, date | None], Goal] = {}
+    ending_on: dict[date, list[Goal]] = {}
+    for goal in all_goals:
+        date_key = (goal.start_date, goal.end_date)
+        exact_previous = last_by_dates.get(date_key)
+        if exact_previous is not None:
+            previous_goal[goal.id] = exact_previous.id
+        else:
+            adjacent_candidates = ending_on.get(goal.start_date - timedelta(days=1), [])
+            if adjacent_candidates:
+                prior = max(
+                    adjacent_candidates,
+                    key=lambda item: (item.start_date, item.created_at, item.id),
+                )
+                previous_goal[goal.id] = prior.id
+
+        last_by_dates[date_key] = goal
+        if goal.end_date is not None:
+            ending_on.setdefault(goal.end_date, []).append(goal)
+
+    if goal_id is not None:
+        requested_goals = [goals_by_id[goal_id]] if goal_id in goals_by_id else []
+    else:
+        statuses = [GoalStatus.ACTIVE, GoalStatus.UPCOMING]
+        if extract_history:
+            statuses.append(GoalStatus.FINISHED)
+        requested_goals = [goal for goal in all_goals if goal.status in statuses]
+        if limit is not None:
+            requested_goals = requested_goals[:limit]
+
+    today = date.today()
+    income_cache: dict[tuple[date, date], int] = {}
     result = []
 
-    for goal in goals:
-        income_query = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
-            Transaction.io == TransactionIO.INCOME,
-            Transaction.status == TransactionStatus.CONFIRMED,
-            func.date(Transaction.created_at) >= goal.start_date,
-            func.date(Transaction.created_at) <= (goal.end_date or date.today()),
-        )
+    for goal in requested_goals:
+        chain = [goal]
+        seen = {goal.id}
+        while chain[-1].id in previous_goal:
+            prior_id = previous_goal[chain[-1].id]
+            if prior_id in seen:
+                break
+            chain.append(goals_by_id[prior_id])
+            seen.add(prior_id)
 
-        current_amount = db.scalar(income_query) or 0
+        oldest_goal = chain[-1]
+        range_start = oldest_goal.start_date
+        range_end = min(goal.end_date or today, today)
+        cache_key = (range_start, range_end)
+
+        if range_end < range_start:
+            chain_income = 0
+        elif cache_key not in income_cache:
+            income_cache[cache_key] = db.scalar(
+                select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+                    Transaction.io == TransactionIO.INCOME,
+                    Transaction.status == TransactionStatus.CONFIRMED,
+                    func.date(Transaction.created_at) >= range_start,
+                    func.date(Transaction.created_at) <= range_end,
+                )
+            ) or 0
+            chain_income = income_cache[cache_key]
+        else:
+            chain_income = income_cache[cache_key]
+
+        already_allocated = sum(prior.target_amount for prior in chain[1:])
+        current_amount = min(
+            max(chain_income - already_allocated, 0),
+            goal.target_amount,
+        )
         progress = (
-            min(current_amount / goal.target_amount * 100, 100)
+            current_amount / goal.target_amount * 100
             if goal.target_amount > 0
             else 0
         )

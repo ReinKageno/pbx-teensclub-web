@@ -39,15 +39,19 @@ def create_goal(goal: GoalCreate, db: Session = Depends(get_db), _: User = Depen
 
 @router.get("", response_model=list[GoalProgressResponse] | GoalProgressResponse)
 def get_goals(commons: Annotated[dict, Depends(common_id_limit_parameters)], db: Session = Depends(get_db)):
-    goals = goal_calculator(db, extract_history=True)
     target_id = commons["target_id"]
     if target_id is not None:
+        goals = goal_calculator(db, extract_history=True, goal_id=target_id)
         goal = next((item for item in goals if item["goal_id"] == target_id), None)
         if goal is None:
             raise HTTPException(status_code=404, detail="Goal not found")
         return goal
 
-    goals = goals[:commons["limit"]]
+    goals = goal_calculator(
+        db,
+        extract_history=True,
+        limit=commons["limit"],
+    )
     if not goals:
         raise HTTPException(
             status_code=404,

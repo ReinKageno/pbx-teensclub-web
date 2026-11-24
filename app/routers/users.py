@@ -234,7 +234,7 @@ def read_notification(user: User = Depends(get_current_user), db: Session = Depe
 
         fetched_notification.append(NotificationSchema(
             id=notification_content.id,
-            type=notification_content.type,
+            level=notification_content.level,
             link=notification_content.link,
             message=notification_content.message,
             is_admin_only=notification_content.is_admin_only,
@@ -305,7 +305,14 @@ def mark_as_read(notification_id: str, user_id: int, db: Session = Depends(get_d
     return RedirectResponse(url="not-found", status_code=404)
 
     # Mocking update:
-    updated_notification = Notification(id=notification_id, type=NotifyLevel.SYSTEM, message="Server maintenance tonight.", link="/", is_admin_only=False, created_at=datetime.now())
+    updated_notification = Notification(
+        id=notification_id,
+        level=NotifyLevel.SYSTEM,
+        message="Server maintenance tonight.",
+        link="/",
+        is_admin_only=False,
+        created_at=datetime.now()
+    )
 
     return updated_notification
 

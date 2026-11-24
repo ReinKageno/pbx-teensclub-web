@@ -23,6 +23,7 @@ class User(Base):
         primary_key=True,
         autoincrement=True,
         default=lambda: secrets.randbelow(int(GEN_USER)),
+        unique=True,
         nullable=False,
     )
 
@@ -221,6 +222,11 @@ class Transaction(Base):
         String(100),
         server_default="system",
         nullable=False,
+    )
+
+    last_modified_by_user_id: Mapped[str | None] = mapped_column(
+        String,
+        nullable=True,
     )
 
 class Goal(Base):

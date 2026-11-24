@@ -72,7 +72,7 @@
           <span aria-hidden="true">⌕</span>
           <input type="search" name="q" value="{{ q | default('', true) }}" placeholder="Search transactions..."
             aria-label="Search transactions">
-          {% if selected_type %}<input type="hidden" name="type" value="{{ selected_type }}">{% endif %}
+          {% if selected_type %}<input type="hidden" name="io" value="{{ selected_type }}">{% endif %}
           {% if selected_status %}<input type="hidden" name="status" value="{{ selected_status }}">{% endif %}
         </form>
         <div class="topbar-user">

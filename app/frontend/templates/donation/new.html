@@ -61,7 +61,7 @@
             <legend class="group-label">Advanced settings</legend>
             <div class="admin-settings-grid">
               <label class="field-label" for="transaction-type">Transaction type
-                <select class="form-control" id="transaction-type" name="type">
+                <select class="form-control" id="transaction-type" name="io">
                   {% for item in transaction_types %}
                   <option value="{{ item.value }}" {% if item.value == 'income' %}selected{% endif %}>{{ item.value | title }}</option>
                   {% endfor %}

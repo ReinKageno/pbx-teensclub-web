@@ -126,8 +126,8 @@ def create_notification(
     db: Session = Depends(get_db)
 ):
     new_notification = Notification(
-        announcement=notification.announcement,
-        type=notification.type,
+        # announcement=notification.announcement,
+        level=notification.level,
         message=notification.message,
         link=notification.link,
         is_admin_only=notification.is_admin_only,
@@ -135,13 +135,13 @@ def create_notification(
     
     users_to_notify = []
 
-    if notification.announcement:
-        if not new_notification.is_admin_only:
-            users_to_notify = db.scalars(select(User)).all()
-        else:
-            users_to_notify = db.scalars(select(User).filter(User.is_admin==True)).all()
-    else:
-        users_to_notify = user
+    # if notification.announcement:
+    #     if not new_notification.is_admin_only:
+    #         users_to_notify = db.scalars(select(User)).all()
+    #     else:
+    #         users_to_notify = db.scalars(select(User).filter(User.is_admin==True)).all()
+    # else:
+    #     users_to_notify = user
 
     if not users_to_notify:
         raise HTTPException(

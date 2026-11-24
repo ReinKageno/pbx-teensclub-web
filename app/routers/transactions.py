@@ -53,7 +53,7 @@ async def create_transaction(request: Request, user: User | None = Depends(get_o
         data.issuer = data.issuer or "Anonymous"
 
     if is_admin:
-        transaction_type = data.type
+        transaction_type = data.io
         transaction_status = data.status
     else:
         transaction_type = TransactionIO.INCOME
@@ -62,18 +62,15 @@ async def create_transaction(request: Request, user: User | None = Depends(get_o
     now = datetime.now(timezone.utc)
 
     db_transaction = Transaction(
-        type=transaction_type,
+        io=transaction_type,
         amount=data.amount,
         description=data.description,
         issuer=data.issuer,
         payment_method=data.payment_method,
         status=transaction_status,
         last_modified_at=now,
-        last_modified_by=(
-            str(user.user_id)
-            if is_admin
-            else AppSystem.NAME
-        ),
+        last_modified_by=user.display_name if is_admin else AppSystem.NAME,
+        last_modified_by_user_id=str(user.user_id) if is_admin else None,
     )
 
     try:
@@ -139,7 +136,8 @@ def edit_transaction(
         setattr(transaction, field, value)
 
     transaction.last_modified_at = datetime.now(timezone.utc)
-    transaction.last_modified_by = str(user.user_id)
+    transaction.last_modified_by = user.display_name
+    transaction.last_modified_by_user_id = str(user.user_id)
 
     try:
         db.commit()
@@ -179,11 +177,11 @@ def get_transactions(
 
 
 @router.get("/recent/data") # Public recent donation
-def get_recent(id: int, request: Request, db: Session = Depends(get_db)):
+def get_recent(inx: int, request: Request, db: Session = Depends(get_db)):
     transactions = (
         db.query(Transaction)
         .filter(
-            Transaction.inx == id,
+            Transaction.inx == inx,
             Transaction.io == TransactionIO.INCOME,
             Transaction.status == TransactionStatus.CONFIRMED,
         )

@@ -7,7 +7,7 @@ from app.models.enums import NotifyLevel
 
 
 class NotificationBase(BaseModel):
-    type: NotifyLevel
+    level: NotifyLevel
     message: str
     link: str | None = False
     is_admin_only: bool = False
@@ -28,7 +28,7 @@ class NotificationSchema(NotificationBase):
 
 class NotificationStatusSchema(BaseModel):
     id: str
-    type: NotifyLevel
+    level: NotifyLevel
     is_admin_only: bool = False
     created_at: datetime
     is_read: bool = False

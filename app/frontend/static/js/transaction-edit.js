@@ -11,7 +11,7 @@
   const amountInput = form.elements.amount;
   const descriptionInput = form.elements.description;
   const paymentMethodInput = form.elements.payment_method;
-  const typeInput = form.elements.type;
+  const ioInput = form.elements.io;
   const statusInput = form.elements.status;
 
   const selectRow = (row) => {
@@ -23,7 +23,7 @@
     amountInput.value = row.dataset.amountRaw || '';
     descriptionInput.value = row.dataset.description || '';
     paymentMethodInput.value = row.dataset.payment || '';
-    typeInput.value = (row.dataset.type || 'income').toLowerCase();
+    ioInput.value = (row.dataset.type || '').toLowerCase();
     statusInput.value = (row.dataset.status || 'pending').toLowerCase();
     errorMessage.textContent = '';
   };
@@ -70,7 +70,7 @@
           amount: Number(amountInput.value),
           description: descriptionInput.value,
           payment_method: paymentMethodInput.value.trim(),
-          type: typeInput.value,
+          io: ioInput.value,
           status: statusInput.value,
           ...(!issuerInput.disabled ? { issuer: issuerInput.value.trim() } : {}),
         }),

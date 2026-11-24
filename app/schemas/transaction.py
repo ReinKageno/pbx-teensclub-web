@@ -6,7 +6,7 @@ from app.models.enums import TransactionStatus, TransactionIO
 
 
 class TransactionBase(BaseModel):
-    id: int
+    inx: int
     issuer: str
     amount: int
     description: str | None
@@ -30,12 +30,12 @@ class UserTransactionCreate(BaseModel):
 
 class AdminTransactionCreate(UserTransactionCreate):
     amount: int = Field(gt=0)
-    type: TransactionIO | None = TransactionIO.INCOME
+    io: TransactionIO | None = TransactionIO.INCOME
     status: TransactionStatus | None = TransactionStatus.PENDING
 
 class TransactionResponse(TransactionBase):
     issuer: str | None
-    type: TransactionIO
+    io: TransactionIO
     status: TransactionStatus
 
     model_config = {
@@ -60,6 +60,6 @@ class TransactionUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=500)
     payment_method: str | None = Field(default=None, max_length=50)
     status: TransactionStatus | None = None
-    type: TransactionIO | None = None
+    io: TransactionIO | None = None
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)

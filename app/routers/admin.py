@@ -285,7 +285,7 @@ def dashboard_goals(
     goals = goal_calculator(db, extract_history=True)
     active_goals = sorted(
         (goal for goal in goals if goal["status"] == GoalStatus.ACTIVE),
-        key=lambda goal: (goal["start_date"], goal["id"]),
+        key=lambda goal: (goal["start_date"], goal["created_at"], goal["id"]),
     )
     history_goals = sorted(
         (goal for goal in goals if goal["status"] == GoalStatus.FINISHED),

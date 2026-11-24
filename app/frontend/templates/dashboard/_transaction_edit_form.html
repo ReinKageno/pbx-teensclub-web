@@ -9,18 +9,19 @@
     <label>Amount<input class="form-control" name="amount" type="number" min="0" step="1" required></label>
     <label>Description<textarea class="form-control" name="description" maxlength="500" rows="3"></textarea></label>
     <label>Payment method<input class="form-control" name="payment_method" type="text" maxlength="50"></label>
-    <label>Type<select class="form-select" name="type" required>
-    <option value="income">Income</option>
-    <option value="expense">Expense</option>
-    </select></label>
+    <label>Type<select class="form-select" name="io" required>
+            <option value="" disabled selected>Select type</option>
+            <option value="income">Income</option>
+            <option value="expense">Expense</option>
+        </select></label>
     <label>Status<select class="form-select" name="status" required>
-    <option value="pending">Pending</option>
-    <option value="confirmed">Confirmed</option>
-    <option value="cancelled">Cancelled</option>
-    </select></label>
+            <option value="pending">Pending</option>
+            <option value="confirmed">Confirmed</option>
+            <option value="cancelled">Cancelled</option>
+        </select></label>
     <p class="edit-error" aria-live="polite"></p>
     <div class="dialog-actions">
-    <button class="clear-filters" id="cancel-transaction-edit" type="button">Cancel</button>
-    <button class="filter-button" type="submit">Save changes</button>
+        <button class="clear-filters" id="cancel-transaction-edit" type="button">Cancel</button>
+        <button class="filter-button" type="submit">Save changes</button>
     </div>
 </form>
