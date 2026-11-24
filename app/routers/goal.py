@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import common_id_limit_parameters
 from app.function import get_current_admin
+from app.function.donation_services import goal_calculator
 from app.models import Goal, User
-from app.schemas.goal import GoalCreate, GoalResponse
-from app.services.exceptions import ResourceUnderConstructionError
+from app.schemas.goal import GoalCreate, GoalProgressResponse, GoalResponse
 
 
 logger = logging.getLogger(__name__)
@@ -37,20 +37,21 @@ def create_goal(goal: GoalCreate, db: Session = Depends(get_db), _: User = Depen
     return db_goal
 
 
-@router.get("", response_model=list[GoalResponse]|GoalResponse)
+@router.get("", response_model=list[GoalProgressResponse] | GoalProgressResponse)
 def get_goals(commons: Annotated[dict, Depends(common_id_limit_parameters)], db: Session = Depends(get_db)):
+    goals = goal_calculator(db, extract_history=True)
+    target_id = commons["target_id"]
+    if target_id is not None:
+        goal = next((item for item in goals if item["goal_id"] == target_id), None)
+        if goal is None:
+            raise HTTPException(status_code=404, detail="Goal not found")
+        return goal
 
-    raise ResourceUnderConstructionError()
-
-    if commons["target_id"] is not None:
-        goal = db.query(Goal).filter(Goal.id == commons["target_id"]).first()
-    else:
-        goal = db.query(Goal).limit(limit=commons["limit"]).all()
-
-    if not goal:
+    goals = goals[:commons["limit"]]
+    if not goals:
         raise HTTPException(
             status_code=404,
-            detail="Goal not found"
+            detail="No goals found"
         )
 
-    return goal
+    return goals

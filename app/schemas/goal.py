@@ -25,3 +25,7 @@ class GoalResponse(GoalBase):
     model_config = {
         "from_attributes": True
     }
+
+class GoalProgressResponse(GoalResponse):
+    current_amount: int
+    progress: float

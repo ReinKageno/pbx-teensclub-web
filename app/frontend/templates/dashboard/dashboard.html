@@ -203,8 +203,8 @@
 
             {% elif transactions %}
             {% for transaction in transactions %}
-            {% set transaction_type = transaction.flow.value if transaction.flow.value is defined else
-            transaction.flow %}
+            {% set transaction_type = transaction.io.value if transaction.io.value is defined else
+            transaction.io %}
             {% set transaction_status = transaction.status.value if transaction.status.value is defined else
             transaction.status %}
             <tr class="transaction-row" tabindex="0" aria-haspopup="dialog"

@@ -3,7 +3,7 @@ from datetime import date, datetime
 import asyncio
 
 from fastapi import Depends
-from sqlalchemy import func, select, case
+from sqlalchemy import func, select, case, or_
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal, get_db
@@ -89,7 +89,7 @@ def update_goal_status() -> list:
             .filter(
                 Goal.status == GoalStatus.UPCOMING,
                 Goal.start_date <= now,
-                Goal.end_date > now,
+                or_(Goal.end_date.is_(None), Goal.end_date > now),
             )
             .update(
                 {Goal.status:GoalStatus.ACTIVE},
@@ -100,7 +100,7 @@ def update_goal_status() -> list:
         update_skipped = (
             db.query(Goal)
             .filter(
-                GoalStatus == GoalStatus.UPCOMING,
+                Goal.status == GoalStatus.UPCOMING,
                 Goal.end_date < now,
             )
             .update(
@@ -152,48 +152,47 @@ async def schedule_update_goal(interval_minutes: int, stop_event: asyncio.Event)
             pass
 
 def goal_calculator(db: Session, extract_history: bool = False) -> list:
-    goals: list[Goal] = []
-
+    statuses = [GoalStatus.ACTIVE, GoalStatus.UPCOMING]
     if extract_history:
-        history = db.scalars(select(Goal)
-            .where(Goal.status == GoalStatus.FINISHED)
-            .limit(10)
-        ).all()
+        statuses.append(GoalStatus.FINISHED)
 
-        goals.extend(history)
-
-    active_goal = db.scalars(
+    # Fetch every requested goal. Each goal gets its own filtered aggregate so
+    # two active goals never share a mutable running total.
+    goals = db.scalars(
         select(Goal)
-        .where(Goal.status == GoalStatus.ACTIVE)
-    ).first()
+        .where(Goal.status.in_(statuses))
+        .order_by(Goal.start_date, Goal.id)
+    ).all()
 
-    if active_goal is not None:
-        goals.append(active_goal)
-
-    def calc_goal(database: Goal):
-        return db.scalar(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
-            .where(
-                Transaction.status == TransactionStatus.CONFIRMED,
-                func.date(Transaction.created_at) >= database.start_date,
-                func.date(Transaction.created_at) <= database.end_date,
-                Transaction.io == TransactionIO.INCOME,
-            )
-        )
-    
     result = []
 
     for goal in goals:
-        current_amount = calc_goal(goal)
-        progress = (current_amount / goal.target_amount) * 100
-        progress_ = progress if progress <= 100 else 0 if progress <= 0 else 100
+        income_query = select(func.coalesce(func.sum(Transaction.amount), 0)).where(
+            Transaction.io == TransactionIO.INCOME,
+            Transaction.status == TransactionStatus.CONFIRMED,
+            func.date(Transaction.created_at) >= goal.start_date,
+            func.date(Transaction.created_at) <= (goal.end_date or date.today()),
+        )
+
+        current_amount = db.scalar(income_query) or 0
+        progress = (
+            min(current_amount / goal.target_amount * 100, 100)
+            if goal.target_amount > 0
+            else 0
+        )
 
         result.append({
             "goal": goal.name,
             "goal_id": goal.id,
+            "id": goal.id,
+            "name": goal.name,
+            "description": goal.description,
+            "start_date": goal.start_date,
+            "end_date": goal.end_date,
+            "created_at": goal.created_at,
             "current_amount": current_amount,
             "target_amount": goal.target_amount,
-            "progress": progress_,
+            "progress": progress,
             "status": goal.status,
         })
 

@@ -9,10 +9,10 @@ from sqlalchemy.orm import Session
 from app import templates, logger
 from app.database.session import get_db
 from app.function.transaction_services import query_transactions
-from app.function.donation_services import sum_total_donation
+from app.function.donation_services import goal_calculator, sum_total_donation
 from app.function.user_services import get_current_admin
 from app.models import Transaction, User
-from app.models.enums import TransactionStatus, TransactionIO
+from app.models.enums import GoalStatus, TransactionStatus, TransactionIO
 from app.services.exceptions import ResourceUnderConstructionError
 
 router = APIRouter(
@@ -277,9 +277,33 @@ def dashboard_transactions_more(
 
 
 @router.get("/dashboard/goals", tags=['Dashboard'])
-def page_community(request: Request):
-    logger.info("'dashboard/goals' page is unvailable")
-    raise ResourceUnderConstructionError()
+def dashboard_goals(
+    request: Request,
+    user: User = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    goals = goal_calculator(db, extract_history=True)
+    active_goals = sorted(
+        (goal for goal in goals if goal["status"] == GoalStatus.ACTIVE),
+        key=lambda goal: (goal["start_date"], goal["id"]),
+    )
+    history_goals = sorted(
+        (goal for goal in goals if goal["status"] == GoalStatus.FINISHED),
+        key=lambda goal: (goal["end_date"] or goal["start_date"], goal["id"]),
+        reverse=True,
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="dashboard/goals.html",
+        context={
+            "current_user": {"display_name": user.username, "role": "Administrator"},
+            "current_year": datetime.now(timezone.utc).year,
+            "current_goal": active_goals[0] if active_goals else None,
+            "secondary_goals": active_goals[1:],
+            "history_goals": history_goals,
+        },
+    )
 
 
 @router.get("/users", tags=['User'])

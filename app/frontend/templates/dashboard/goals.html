@@ -1,0 +1,99 @@
+{% extends "dashboard/base.html" %}
+{% block title %}Goals | Community Fund{% endblock %}
+{% block goals_nav_class %}active{% endblock %}
+{% block goals_nav_current %}aria-current="page"{% endblock %}
+{% block extra_styles %}<link rel="stylesheet" href="/static/css/addition.css">{% endblock %}
+{% block content %}
+<div class="page-heading">
+  <div>
+    <p class="eyebrow">COMMUNITY TARGETS</p>
+    <h1>Goals</h1>
+    <p class="subtitle">Track the community’s active goals and celebrate what’s been completed.</p>
+  </div>
+  <div class="date-chip"><span>{{ secondary_goals | length + (1 if current_goal else 0) }} active goals</span></div>
+</div>
+
+<section aria-labelledby="current-goal-heading">
+  {% if current_goal %}
+  <article class="goal-feature-card">
+    <div class="goal-feature-copy">
+      <p class="goal-kicker"><span class="goal-status-dot"></span> OLDEST ACTIVE GOAL</p>
+      <h2 id="current-goal-heading">{{ current_goal.name }}</h2>
+      <p class="goal-description">{{ current_goal.description or "A community goal in progress." }}</p>
+      <div class="goal-dates">
+        <span>Started {{ current_goal.start_date.strftime("%d %b %Y") }}</span>
+        {% if current_goal.end_date %}<span>Target date {{ current_goal.end_date.strftime("%d %b %Y") }}</span>{% endif %}
+      </div>
+    </div>
+    <div class="goal-feature-progress">
+      <div class="goal-amounts">
+        <div><span>Raised so far</span><strong>{{ current_goal.current_amount | rupiah }}</strong></div>
+        <div class="goal-target"><span>Goal target</span><strong>{{ current_goal.target_amount | rupiah }}</strong></div>
+      </div>
+      <div class="progress goal-progress-track" role="progressbar" aria-label="{{ current_goal.name }} progress"
+        aria-valuenow="{{ current_goal.progress | round | int }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" style="width: {{ current_goal.progress }}%"></div>
+      </div>
+      <div class="goal-progress-caption"><strong>{{ current_goal.progress | round | int }}%</strong><span>of target reached</span></div>
+    </div>
+  </article>
+  {% else %}
+  <article class="goal-empty-card">
+    <span class="goal-empty-icon" aria-hidden="true">◎</span>
+    <div>
+      <h2 id="current-goal-heading">No active goals yet</h2>
+      <p>When a goal becomes active, it will appear here as the community’s main focus.</p>
+    </div>
+  </article>
+  {% endif %}
+</section>
+
+{% if secondary_goals %}
+<section class="goal-secondary-section" aria-labelledby="other-goals-heading">
+  <div class="section-heading">
+    <div><p class="eyebrow">IN PROGRESS</p><h2 id="other-goals-heading">Other active goals</h2></div>
+    <span class="muted-copy">{{ secondary_goals | length }} more</span>
+  </div>
+  <div class="row g-3">
+    {% for goal in secondary_goals %}
+    <div class="col-12 col-lg-6">
+      <article class="goal-secondary-card h-100">
+        <div class="goal-secondary-top"><h3>{{ goal.name }}</h3><span>{{ goal.progress | round | int }}%</span></div>
+        <p>{{ goal.description or "A community goal in progress." }}</p>
+        <div class="progress goal-progress-track" role="progressbar" aria-label="{{ goal.name }} progress"
+          aria-valuenow="{{ goal.progress | round | int }}" aria-valuemin="0" aria-valuemax="100">
+          <div class="progress-bar" style="width: {{ goal.progress }}%"></div>
+        </div>
+        <div class="goal-secondary-footer"><span>{{ goal.current_amount | rupiah }} raised</span><span>of {{ goal.target_amount | rupiah }}</span></div>
+      </article>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% endif %}
+
+<section class="goal-history-section panel" aria-labelledby="goal-history-heading">
+  <div class="panel-heading">
+    <div><span class="panel-symbol">↗</span><h2 id="goal-history-heading">Goal history</h2></div>
+    <span class="muted-copy">Completed goals</span>
+  </div>
+  {% if history_goals %}
+  <div class="goal-history-list">
+    {% for goal in history_goals %}
+    <article class="goal-history-item">
+      <div class="goal-history-heading">
+        <div><h3>{{ goal.name }}</h3><span>{{ goal.start_date.strftime("%d %b %Y") }}{% if goal.end_date %} – {{ goal.end_date.strftime("%d %b %Y") }}{% endif %}</span></div>
+        <strong>{{ goal.current_amount | rupiah }} <small>/ {{ goal.target_amount | rupiah }}</small></strong>
+      </div>
+      <div class="progress goal-history-track" role="progressbar" aria-label="{{ goal.name }} completion"
+        aria-valuenow="{{ goal.progress | round | int }}" aria-valuemin="0" aria-valuemax="100">
+        <div class="progress-bar" style="width: {{ goal.progress }}%"></div>
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+  {% else %}
+  <p class="goal-history-empty">Completed goals will appear here.</p>
+  {% endif %}
+</section>
+{% endblock %}
