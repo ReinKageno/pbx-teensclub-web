@@ -51,7 +51,13 @@
               <tbody id="transaction-rows" data-next-offset="{{ transactions | length }}" data-has-more="{{ 'true' if has_more_transactions else 'false' }}">
                 {% include "dashboard/_transaction_rows.html" %}
                 {% if not transactions %}
-                <tr><td colspan="5" class="empty-state">No transactions match these filters.</td></tr>
+                <tr><td colspan="5" class="empty-state{% if transactions_error %} error-state{% endif %}">
+                  {% if transactions_error %}
+                  Transactions could not be loaded. Please try again later.
+                  {% else %}
+                  No transactions match these filters.
+                  {% endif %}
+                </td></tr>
                 {% endif %}
               </tbody>
             </table>
@@ -123,10 +129,21 @@
       row.dataset.detailsBound = 'true';
       const openDetails = () => {
         document.querySelector('#detail-title').textContent = `#TRX-${String(row.dataset.id).padStart(4, '0')}`;
-        for (const key of ['amount', 'type', 'status', 'issuer', 'payment', 'created', 'description', 'modified', 'modified-by']) {
-          const value = key === 'modified-by' ? row.dataset.modifiedBy : row.dataset[key];
-          dialog.querySelector(`[data-detail="${key}"]`).textContent = value;
+        const setDetail = (key, value, isRegisteredUser = false) => {
+          const target = dialog.querySelector(`[data-detail="${key}"]`);
+          target.textContent = value;
+          if (isRegisteredUser) {
+            const badge = document.createElement('span');
+            badge.className = 'tags-badge user-badge';
+            badge.textContent = 'User';
+            target.append(' ', badge);
+          }
+        };
+        for (const key of ['amount', 'type', 'status', 'payment', 'created', 'description', 'modified']) {
+          setDetail(key, row.dataset[key]);
         }
+        setDetail('issuer', row.dataset.issuer, row.dataset.issuerUser === 'true');
+        setDetail('modified-by', row.dataset.modifiedBy, row.dataset.modifiedByUser === 'true');
         dialog.showModal();
       };
       row.addEventListener('click', openDetails);

@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 
 from app import templates, logger
 from app.database.session import get_db
-from app.function import AppSystem
 from app.function.user_services import get_current_admin, get_optional_user
 from app.models import Transaction, User
 from app.models.enums import TransactionIO, TransactionStatus
@@ -66,11 +65,19 @@ async def create_transaction(request: Request, user: User | None = Depends(get_o
         amount=data.amount,
         description=data.description,
         issuer=data.issuer,
+        # Only link an issuer when the authenticated account is the source of
+        # that name. Guest input and an admin's alternate issuer stay unlinked.
+        issuer_user_id=(
+            str(user.user_id)
+            if user is not None and (not is_admin or data.issuer == user.username)
+            else None
+        ),
         payment_method=data.payment_method,
         status=transaction_status,
         last_modified_at=now,
-        last_modified_by=user.display_name if is_admin else AppSystem.NAME,
-        last_modified_by_user_id=str(user.user_id) if is_admin else None,
+        # The actor is derived from the authenticated session, never from form data.
+        last_modified_by=user.display_name if user is not None else "Anonymous",
+        last_modified_by_user_id=str(user.user_id) if user is not None else None,
     )
 
     try:
@@ -124,13 +131,11 @@ def edit_transaction(
         raise HTTPException(status_code=422, detail="Provide at least one field to update")
 
     new_issuer = updates.get("issuer")
-    if new_issuer is not None and new_issuer != transaction.issuer and transaction.issuer:
-        linked_account = db.query(User.id).filter(User.username == transaction.issuer).first()
-        if linked_account:
-            raise HTTPException(
-                status_code=409,
-                detail="The issuer belongs to a user account and cannot be changed.",
-            )
+    if new_issuer is not None and new_issuer != transaction.issuer and transaction.issuer_user_id:
+        raise HTTPException(
+            status_code=409,
+            detail="The issuer belongs to a user account and cannot be changed.",
+        )
 
     for field, value in updates.items():
         setattr(transaction, field, value)

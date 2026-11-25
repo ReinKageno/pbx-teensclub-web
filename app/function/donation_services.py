@@ -12,7 +12,7 @@ from app.models import Transaction, Goal
 
 
 def sum_total_donation(
-    db: Session = Depends(get_db),
+    db: Session,
 ):
     stmt = select(
         func.coalesce(

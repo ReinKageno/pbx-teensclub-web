@@ -168,6 +168,7 @@ input.transaction-filters::placeholder {
 .transactions-load-status {
     min-height: 1.5em;
     margin: 8px 0 0;
+    margin-bottom: 1.5rem;
     color: var(--muted);
     font-size: 12px;
     text-align: center;
@@ -1182,6 +1183,11 @@ tbody tr:last-child td {
 .tags-badge.expense {
     color: #ffd18b;
     background: #4b3519;
+}
+
+.tags-badge.user-badge {
+    color: #b9c9ff;
+    background: #293653;
 }
 
 .more-link {

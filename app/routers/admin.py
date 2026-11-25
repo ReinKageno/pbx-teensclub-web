@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 import re
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, Query, Request
 from fastapi.responses import HTMLResponse
@@ -156,14 +157,57 @@ def _order_transactions(query, sort: str):
     return query.order_by(Transaction.created_at.desc(), Transaction.inx.desc())
 
 
-def _account_issuers(db: Session, transactions: list[Transaction]) -> set[str]:
-    issuer_names = {transaction.issuer for transaction in transactions if transaction.issuer}
-    if not issuer_names:
-        return set()
+def _linked_issuer_transactions(transactions: list[Transaction]) -> set[int]:
+    """Return transactions linked to an account by server-assigned ID."""
     return {
-        username
-        for (username,) in db.query(User.username).filter(User.username.in_(issuer_names)).all()
+        transaction.inx
+        for transaction in transactions
+        if transaction.issuer_user_id
     }
+
+
+def _modified_by_usernames(
+    db: Session,
+    transactions: list[Transaction],
+) -> tuple[dict[int, str], set[int]]:
+    """Resolve modifier IDs for dashboard display without changing stored values."""
+    candidate_ids = set()
+    legacy_id_transactions = set()
+    for transaction in transactions:
+        if transaction.last_modified_by_user_id:
+            candidate_ids.add(transaction.last_modified_by_user_id)
+        elif transaction.last_modified_by:
+            try:
+                UUID(transaction.last_modified_by)
+            except (ValueError, TypeError, AttributeError):
+                continue
+            candidate_ids.add(transaction.last_modified_by)
+            legacy_id_transactions.add(transaction.inx)
+
+    usernames = {
+        user_id: username
+        for user_id, username in db.query(User.user_id, User.username)
+        .filter(User.user_id.in_(candidate_ids))
+        .all()
+    } if candidate_ids else {}
+
+    labels = {}
+    registered_user_transactions = set()
+    for transaction in transactions:
+        modifier_id = transaction.last_modified_by_user_id
+        if modifier_id:
+            username = usernames.get(modifier_id)
+            labels[transaction.inx] = username or "Unknown user"
+            if username:
+                registered_user_transactions.add(transaction.inx)
+        elif transaction.inx in legacy_id_transactions:
+            username = usernames.get(transaction.last_modified_by)
+            labels[transaction.inx] = username or "Unknown user"
+            if username:
+                registered_user_transactions.add(transaction.inx)
+        else:
+            labels[transaction.inx] = transaction.last_modified_by or "System"
+    return labels, registered_user_transactions
 
 
 @router.get("/dashboard", tags=['Dashboard'])
@@ -183,8 +227,11 @@ def dashboard(request: Request, user: User = Depends(get_current_admin), db: Ses
         logger.exception("Failed to build dashboard income and expense chart.")
         chart_data = []
 
+    modified_by_usernames = {}
+    modified_by_registered_users = set()
     try:
-        account_issuers = _account_issuers(db, transactions)
+        linked_issuer_transactions = _linked_issuer_transactions(transactions)
+        modified_by_usernames, modified_by_registered_users = _modified_by_usernames(db, transactions)
 
         total_incomes, total_expenses, balance = sum_total_donation(db)
 
@@ -197,7 +244,7 @@ def dashboard(request: Request, user: User = Depends(get_current_admin), db: Ses
 
     except:
         logger.exception("Failed to fetch total amount of transactions.")
-        account_issuers = []
+        linked_issuer_transactions = set()
         total_incomes = total_expenses = balance = -1
         summary = {}
 
@@ -207,7 +254,9 @@ def dashboard(request: Request, user: User = Depends(get_current_admin), db: Ses
         context={
             "summary": summary,
             "transactions": transactions,
-            "account_issuers": account_issuers,
+            "modified_by_usernames": modified_by_usernames,
+            "modified_by_registered_users": modified_by_registered_users,
+            "linked_issuer_transactions": linked_issuer_transactions,
             "transactions_error": transactions_error,
             "current_user": {"display_name": user.username, "role": "Administrator"},
             "chart_data": chart_data,
@@ -225,18 +274,35 @@ def dashboard_transactions(
     user: User = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
-    query, sort, filter_errors = _filtered_transactions(db, q)
-    total_transactions = query.order_by(None).count()
-    transactions = (
-        _order_transactions(query, sort)
-        .limit(TRANSACTION_PAGE_SIZE)
-        .all()
-    )
+    transactions_error = False
+    try:
+        query, sort, filter_errors = _filtered_transactions(db, q)
+        total_transactions = query.order_by(None).count()
+        transactions = (
+            _order_transactions(query, sort)
+            .limit(TRANSACTION_PAGE_SIZE)
+            .all()
+        )
+        modified_by_usernames, modified_by_registered_users = _modified_by_usernames(db, transactions)
+        linked_issuer_transactions = _linked_issuer_transactions(transactions)
+    except Exception:
+        logger.exception("Failed to process dashboard transactions.")
+        transactions = []
+        modified_by_usernames = {}
+        modified_by_registered_users = set()
+        linked_issuer_transactions = set()
+        total_transactions = 0
+        filter_errors = []
+        transactions_error = True
+
     context = {
         "transactions": transactions,
-        "account_issuers": _account_issuers(db, transactions),
+        "modified_by_usernames": modified_by_usernames,
+        "modified_by_registered_users": modified_by_registered_users,
+        "linked_issuer_transactions": linked_issuer_transactions,
         "total_transactions": total_transactions,
         "has_more_transactions": total_transactions > len(transactions),
+        "transactions_error": transactions_error,
         "current_user": {"display_name": user.username, "role": "Administrator"},
         "q": q,
         "filter_errors": filter_errors,
@@ -263,13 +329,19 @@ def dashboard_transactions_more(
         .limit(TRANSACTION_PAGE_SIZE + 1)
         .all()
     )
+    modified_by_usernames, modified_by_registered_users = _modified_by_usernames(
+        db,
+        transactions[:TRANSACTION_PAGE_SIZE],
+    )
     has_more = len(transactions) > TRANSACTION_PAGE_SIZE
     response = templates.TemplateResponse(
         request=request,
         name="dashboard/_transaction_rows.html",
         context={
             "transactions": transactions[:TRANSACTION_PAGE_SIZE],
-            "account_issuers": _account_issuers(db, transactions[:TRANSACTION_PAGE_SIZE]),
+            "modified_by_usernames": modified_by_usernames,
+            "modified_by_registered_users": modified_by_registered_users,
+            "linked_issuer_transactions": _linked_issuer_transactions(transactions[:TRANSACTION_PAGE_SIZE]),
         },
     )
     response.headers["X-Has-More"] = "true" if has_more else "false"

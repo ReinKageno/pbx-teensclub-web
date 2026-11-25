@@ -98,6 +98,12 @@ def registration_user_exist(
     usr: UserRegisterForm,
     db: Session,
 ) -> bool:
+    if usr.username.strip().casefold() in {"system", "anonymous"}:
+        raise HTTPException(
+            status_code=409,
+            detail="This username is reserved",
+        )
+
     usermail_exists = db.scalar(
         select(User.email).where(User.email==usr.email)
     )

@@ -211,13 +211,15 @@
               aria-label="Open details for transaction #TRX-{{ '%04d' | format(transaction.inx) }}"
               data-id="{{ transaction.inx }}" data-type="{{ transaction_type | title }}"
               data-status="{{ transaction_status | title }}" data-issuer="{{ transaction.issuer or 'Anonymous' }}"
-              data-issuer-editable="{{ 'false' if transaction.issuer in account_issuers else 'true' }}"
+              data-issuer-user="{{ 'true' if transaction.inx in linked_issuer_transactions else 'false' }}"
+              data-issuer-editable="{{ 'false' if transaction.inx in linked_issuer_transactions else 'true' }}"
               data-amount="{{ transaction.amount | rupiah }}" data-amount-raw="{{ transaction.amount }}"
               data-description="{{ transaction.description or '' }}"
               data-payment="{{ transaction.payment_method or '' }}"
               data-created="{{ transaction.created_at.strftime('%d %b %Y, %H:%M') if transaction.created_at else '—' }}"
               data-modified="{{ transaction.last_modified_at.strftime('%d %b %Y, %H:%M') if transaction.last_modified_at else '—' }}"
-              data-modified-by="{{ transaction.last_modified_by or 'System' }}">
+              data-modified-by="{{ modified_by_usernames.get(transaction.inx, 'System') }}"
+              data-modified-by-user="{{ 'true' if transaction.inx in modified_by_registered_users else 'false' }}">
               <td class="muted-cell">
                 #TRX-{{ "%04d" | format(transaction.inx) }}
               </td>
@@ -228,6 +230,10 @@
                     aria-label="Type: {{ transaction_type | title }}">
                     {{ transaction_type | title }}
                   </span>
+
+                  {% if transaction.inx in linked_issuer_transactions %}
+                  <span class="tags-badge user-badge" aria-label="Issuer is a registered user">User</span>
+                  {% endif %}
 
                   <span class="tags-badge status-badge {{ transaction_status | lower }}"
                     aria-label="Status: {{ transaction_status | title }}">
@@ -367,10 +373,21 @@
   document.querySelectorAll('.transaction-row').forEach((row) => {
     const openDetails = () => {
       document.querySelector('#detail-title').textContent = `#TRX-${String(row.dataset.id).padStart(4, '0')}`;
-      for (const key of ['amount', 'type', 'status', 'issuer', 'payment', 'created', 'description', 'modified', 'modified-by']) {
-        const value = key === 'modified-by' ? row.dataset.modifiedBy : row.dataset[key];
-        dialog.querySelector(`[data-detail="${key}"]`).textContent = value;
+      const setDetail = (key, value, isRegisteredUser = false) => {
+        const target = dialog.querySelector(`[data-detail="${key}"]`);
+        target.textContent = value;
+        if (isRegisteredUser) {
+          const badge = document.createElement('span');
+          badge.className = 'tags-badge user-badge';
+          badge.textContent = 'User';
+          target.append(' ', badge);
+        }
+      };
+      for (const key of ['amount', 'type', 'status', 'payment', 'created', 'description', 'modified']) {
+        setDetail(key, row.dataset[key]);
       }
+      setDetail('issuer', row.dataset.issuer, row.dataset.issuerUser === 'true');
+      setDetail('modified-by', row.dataset.modifiedBy, row.dataset.modifiedByUser === 'true');
       dialog.showModal();
     };
     row.addEventListener('click', openDetails);

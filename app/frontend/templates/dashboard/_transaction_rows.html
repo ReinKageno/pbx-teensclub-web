@@ -5,17 +5,20 @@
   aria-label="Open details for transaction #TRX-{{ '%04d' | format(transaction.inx) }}"
   data-id="{{ transaction.inx }}" data-type="{{ transaction_type | title }}"
   data-status="{{ transaction_status | title }}" data-issuer="{{ transaction.issuer or 'Anonymous' }}"
-  data-issuer-editable="{{ 'false' if transaction.issuer in account_issuers else 'true' }}"
+  data-issuer-user="{{ 'true' if transaction.inx in linked_issuer_transactions else 'false' }}"
+  data-issuer-editable="{{ 'false' if transaction.inx in linked_issuer_transactions else 'true' }}"
   data-amount="{{ transaction.amount | rupiah }}" data-amount-raw="{{ transaction.amount }}"
   data-description="{{ transaction.description or '' }}"
   data-payment="{{ transaction.payment_method or '—' }}"
   data-created="{{ transaction.created_at.strftime('%d %b %Y, %H:%M') if transaction.created_at else '—' }}"
   data-modified="{{ transaction.last_modified_at.strftime('%d %b %Y, %H:%M') if transaction.last_modified_at else '—' }}"
-  data-modified-by="{{ transaction.last_modified_by or 'System' }}">
+  data-modified-by="{{ modified_by_usernames.get(transaction.inx, 'System') }}"
+  data-modified-by-user="{{ 'true' if transaction.inx in modified_by_registered_users else 'false' }}">
   <td class="muted-cell">#TR-{{ "%04d" | format(transaction.inx) }}</td>
   <td>
     <div class="transaction-badges">
       <span class="tags-badge {{ transaction_type | lower }}">{{ transaction_type | title }}</span>
+      {% if transaction.inx in linked_issuer_transactions %}<span class="tags-badge user-badge" aria-label="Issuer is a registered user">User</span>{% endif %}
       <span class="tags-badge status-badge {{ transaction_status | lower }}">{{ transaction_status | title }}</span>
     </div>
   </td>

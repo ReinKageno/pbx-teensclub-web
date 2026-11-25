@@ -3,7 +3,7 @@ from os import environ
 import secrets
 import uuid
 
-from sqlalchemy import ARRAY, CheckConstraint, Date, DateTime, Integer, String, false, func
+from sqlalchemy import ARRAY, CheckConstraint, Date, DateTime, ForeignKey, Integer, String, UniqueConstraint, false, func
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -17,7 +17,10 @@ GEN_USER = environ.get("GEN_USER_ID")
 
 class User(Base):
     __tablename__ = "user"
-    __table_args__ = {"schema": "server"}
+    __table_args__ = (
+        UniqueConstraint("user_id", name="uq_server_user_user_id"),
+        {"schema": "server"},
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True,
@@ -192,6 +195,14 @@ class Transaction(Base):
         String(50),
         server_default="anonymous",
         nullable=False,
+    )
+
+    # Optional account link; issuer remains the display name shown to users.
+    issuer_user_id: Mapped[str | None] = mapped_column(
+        String,
+        ForeignKey("server.user.user_id", name="fk_transactions_issuer_user_id_user"),
+        nullable=True,
+        index=True,
     )
 
     payment_method: Mapped[str | None] = mapped_column(
