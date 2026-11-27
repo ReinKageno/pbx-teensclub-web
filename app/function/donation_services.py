@@ -218,7 +218,7 @@ def goal_calculator(
 
         oldest_goal = chain[-1]
         range_start = oldest_goal.start_date
-        range_end = min(goal.end_date or today, today)
+        range_end = goal.end_date # min(goal.end_date or today, today) to exclude future income.
         cache_key = (range_start, range_end)
 
         if range_end < range_start:
